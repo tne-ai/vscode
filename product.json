@@ -1,6 +1,6 @@
 {
 	"nameShort": "Compass",
-	"nameLong": "Compass",
+	"nameLong": "Compass IDE",
 	"applicationName": "compass",
 	"dataFolderName": ".compass",
 	"win32MutexName": "vscodeoss",
