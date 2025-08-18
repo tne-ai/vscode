@@ -29,8 +29,13 @@ export class CompassService implements ICompassService {
 	}
 
 	async getCurrentMode(): Promise<CompassMode | undefined> {
-		// TODO: Bridge a read API from the extension adapter when available.
-		return undefined;
+		try {
+			const mode = await this.commandService.executeCommand<CompassMode | undefined>('compass.service.getCurrentMode');
+			return mode;
+		} catch (error) {
+			this.notificationService.error(`Compass: failed to get current mode: ${error instanceof Error ? error.message : String(error)}`);
+			return undefined;
+		}
 	}
 
 	// Message Processing
@@ -49,37 +54,60 @@ export class CompassService implements ICompassService {
 	// Provider Management (profile-based)
 
 	async getAvailableProfiles(): Promise<Array<{ name: string }>> {
-		// TODO: Implement via shim exposure
-		return [];
+		try {
+			const profiles = await this.commandService.executeCommand<Array<{ name: string }>>('compass.service.getAvailableProfiles');
+			return profiles ?? [];
+		} catch (error) {
+			this.notificationService.error(`Compass: failed to list provider profiles: ${error instanceof Error ? error.message : String(error)}`);
+			return [];
+		}
 	}
 
 	async getActiveProfileName(): Promise<string | undefined> {
-		// TODO: Implement via shim exposure
-		return undefined;
+		try {
+			return await this.commandService.executeCommand<string | undefined>('compass.service.getActiveProfileName');
+		} catch (error) {
+			this.notificationService.error(`Compass: failed to get active profile: ${error instanceof Error ? error.message : String(error)}`);
+			return undefined;
+		}
 	}
 
 	async activateProfileByName(name: string): Promise<string | undefined> {
-		// TODO: Implement via shim exposure
-		this.notificationService.info(`Compass: activateProfileByName("${name}") not yet available`);
-		return undefined;
+		try {
+			return await this.commandService.executeCommand<string | undefined>('compass.service.activateProfileByName', name);
+		} catch (error) {
+			this.notificationService.error(`Compass: failed to activate profile "${name}": ${error instanceof Error ? error.message : String(error)}`);
+			return undefined;
+		}
 	}
 
-	async upsertProfile(_name: string, _settings: ProviderSettings, _activate?: boolean): Promise<string | undefined> {
-		// TODO: Implement via shim exposure
-		this.notificationService.info('Compass: upsertProfile not yet available');
-		return undefined;
+	async upsertProfile(name: string, settings: ProviderSettings, activate?: boolean): Promise<string | undefined> {
+		try {
+			return await this.commandService.executeCommand<string | undefined>('compass.service.upsertProfile', { name, settings, activate });
+		} catch (error) {
+			this.notificationService.error(`Compass: failed to upsert profile "${name}": ${error instanceof Error ? error.message : String(error)}`);
+			return undefined;
+		}
 	}
 
 	// MCP Integration
 
 	async getMCPServers(): Promise<Array<{ name: string; description?: string; state?: string }>> {
-		// TODO: Implement via shim exposure
-		return [];
+		try {
+			const servers = await this.commandService.executeCommand<Array<{ name: string; description?: string; state?: string }>>('compass.service.getMCPServers');
+			return servers ?? [];
+		} catch (error) {
+			this.notificationService.error(`Compass: failed to list MCP servers: ${error instanceof Error ? error.message : String(error)}`);
+			return [];
+		}
 	}
 
-	async addMCPServer(_config: { name: string; command: string; args?: string[]; env?: Record<string, string> }): Promise<void> {
-		// TODO: Implement via shim exposure
-		this.notificationService.info('Compass: addMCPServer not yet available');
+	async addMCPServer(config: { name: string; command: string; args?: string[]; env?: Record<string, string> }): Promise<void> {
+		try {
+			await this.commandService.executeCommand('compass.service.addMCPServer', config);
+		} catch (error) {
+			this.notificationService.error(`Compass: failed to add MCP server "${config?.name ?? ''}": ${error instanceof Error ? error.message : String(error)}`);
+		}
 	}
 }
 
