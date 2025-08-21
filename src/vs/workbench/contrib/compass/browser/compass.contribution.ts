@@ -8,8 +8,7 @@ import * as nls from '../../../../nls.js';
 import { SyncDescriptor } from '../../../../platform/instantiation/common/descriptors.js';
 import { Registry } from '../../../../platform/registry/common/platform.js';
 import { ViewPaneContainer } from '../../../browser/parts/views/viewPaneContainer.js';
-import { Extensions as ViewExtensions, IViewContainersRegistry, IViewsRegistry, ViewContainerLocation, IViewDescriptorService, ViewContainer } from '../../../common/views.js';
-import { CompassViewPane } from './compassViewPane.js';
+import { Extensions as ViewExtensions, IViewContainersRegistry, ViewContainerLocation, IViewDescriptorService, ViewContainer } from '../../../common/views.js';
 import { IWorkbenchLayoutService, Parts } from '../../../services/layout/browser/layoutService.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../platform/storage/common/storage.js';
 import { IWorkbenchContribution, WorkbenchPhase, registerWorkbenchContribution2 } from '../../../common/contributions.js';
@@ -17,7 +16,7 @@ import { IWorkbenchContribution, WorkbenchPhase, registerWorkbenchContribution2 
 // Container: Activity Bar (Sidebar)
 export const COMPASS_VIEW_CONTAINER_ID = 'workbench.view.compass';
 
-const VIEW_CONTAINER = Registry.as<IViewContainersRegistry>(ViewExtensions.ViewContainersRegistry).registerViewContainer({
+Registry.as<IViewContainersRegistry>(ViewExtensions.ViewContainersRegistry).registerViewContainer({
 	id: COMPASS_VIEW_CONTAINER_ID,
 	title: nls.localize2('compass', "Compass"),
 	ctorDescriptor: new SyncDescriptor(ViewPaneContainer, [COMPASS_VIEW_CONTAINER_ID, { mergeViewWithContainerWhenSingleView: true }]),
@@ -25,14 +24,6 @@ const VIEW_CONTAINER = Registry.as<IViewContainersRegistry>(ViewExtensions.ViewC
 	order: 0
 }, ViewContainerLocation.AuxiliaryBar, { doNotRegisterOpenCommand: true });
 
-// View: CompassViewPane
-Registry.as<IViewsRegistry>(ViewExtensions.ViewsRegistry).registerViews([{
-	id: CompassViewPane.ID,
-	name: nls.localize2('compassViewName', "Compass"),
-	ctorDescriptor: new SyncDescriptor(CompassViewPane),
-	canMoveView: true,
-	canToggleVisibility: true
-}], VIEW_CONTAINER);
 
 // Migration & first-run visibility: ensure Compass lives in Auxiliary Bar and show the part if active
 const MIGRATION_KEY = 'tne.compassToAuxiliaryBar.migrated';
@@ -53,10 +44,13 @@ class CompassAuxiliaryBarContribution implements IWorkbenchContribution {
 		try {
 			// Only run once per profile
 			if (!this.storageService.getBoolean(MIGRATION_KEY, StorageScope.PROFILE, false)) {
-				// Move native Compass container (core)
-				this.moveContainerToAux(ViewContainerLocation.AuxiliaryBar, COMPASS_VIEW_CONTAINER_ID, 'compass-core');
-				// Move extension Compass container if present
-				this.moveContainerToAux(ViewContainerLocation.AuxiliaryBar, EXT_COMPASS_CONTAINER_ID, 'compass-extension');
+				const viewContainersRegistry = Registry.as<IViewContainersRegistry>(ViewExtensions.ViewContainersRegistry);
+
+				// Deregister extension Compass container from Sidebar if present
+				const extCompassContainer = viewContainersRegistry.get(EXT_COMPASS_CONTAINER_ID);
+				if (extCompassContainer && viewContainersRegistry.getViewContainerLocation(extCompassContainer) === ViewContainerLocation.Sidebar) {
+					viewContainersRegistry.deregisterViewContainer(extCompassContainer);
+				}
 
 				this.storageService.store(MIGRATION_KEY, true, StorageScope.PROFILE, StorageTarget.USER);
 			}
@@ -74,16 +68,6 @@ class CompassAuxiliaryBarContribution implements IWorkbenchContribution {
 		}
 	}
 
-	private moveContainerToAux(location: ViewContainerLocation, id: string, reason: string): void {
-		const container = this.viewsDescriptorService.getViewContainerById(id);
-		if (!container) {
-			return;
-		}
-		const current = this.viewsDescriptorService.getViewContainerLocation(container);
-		if (current !== location) {
-			this.viewsDescriptorService.moveViewContainerToLocation(container, location, undefined, reason);
-		}
-	}
 }
 
 registerWorkbenchContribution2(CompassAuxiliaryBarContribution.ID, CompassAuxiliaryBarContribution, WorkbenchPhase.AfterRestored);

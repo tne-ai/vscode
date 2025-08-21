@@ -30,6 +30,7 @@ import { ILogService } from '../../../platform/log/common/log.js';
 import { IExtensionFeatureTableRenderer, IRenderedData, ITableData, IRowData, IExtensionFeaturesRegistry, Extensions as ExtensionFeaturesRegistryExtensions } from '../../services/extensionManagement/common/extensionFeatures.js';
 import { Disposable } from '../../../base/common/lifecycle.js';
 import { MarkdownString } from '../../../base/common/htmlContent.js';
+import { COMPASS_VIEW_CONTAINER_ID } from '../../contrib/compass/browser/compass.contribution.js'; // Import the Compass view container ID
 
 export interface IUserFriendlyViewsContainerDescriptor {
 	id: string;
@@ -609,6 +610,11 @@ class ViewsExtensionHandler implements IWorkbenchContribution {
 	}
 
 	private getViewContainer(value: string): ViewContainer | undefined {
+		// Force Compass extension's view container to AuxiliaryBar
+		if (value === 'compass-ActivityBar') {
+			return this.viewContainersRegistry.get(COMPASS_VIEW_CONTAINER_ID); // Use the native Compass container ID which is already registered to AuxiliaryBar
+		}
+
 		switch (value) {
 			case 'explorer': return this.viewContainersRegistry.get(EXPLORER);
 			case 'debug': return this.viewContainersRegistry.get(DEBUG);
