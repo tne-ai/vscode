@@ -2,6 +2,7 @@
 	"nameShort": "Compass",
 	"nameLong": "Compass",
 	"applicationName": "compass",
+	"icon": "resources/icons/compass.svg",
 	"dataFolderName": ".compass",
 	"win32MutexName": "vscodeoss",
 	"licenseName": "MIT",
