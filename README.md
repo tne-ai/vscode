@@ -38,6 +38,74 @@ please see the document [How to Contribute](https://github.com/microsoft/vscode/
 * [Finding an issue to work on](https://github.com/microsoft/vscode/wiki/How-to-Contribute#where-to-contribute)
 * [Contributing to translations](https://aka.ms/vscodeloc)
 
+## Packaging and Distribution for macOS
+
+When distributing the Compass application for macOS, you may encounter Gatekeeper warnings such as "“Compass” cannot be opened because the developer cannot be verified" or "“Compass” is damaged and can’t be opened." These issues arise because the application is not properly signed and notarized by Apple.
+
+To ensure a smooth user experience and avoid these warnings, it is highly recommended to **sign and notarize** your application.
+
+### Prerequisites for Signing and Notarization:
+
+1.  **Apple Developer Program Membership**: An active membership is required to obtain the necessary certificates.
+2.  **Xcode**: Install Xcode from the Mac App Store. It includes command-line tools for signing and notarization.
+3.  **App-Specific Password**: Generate an app-specific password from your Apple ID account page for notarization.
+
+### Steps to Sign and Notarize Your Application:
+
+1.  **Obtain Developer ID Application Certificate**:
+    *   Log in to your Apple Developer account.
+    *   Go to "Certificates, Identifiers & Profiles".
+    *   Create a new certificate, selecting "Developer ID Application".
+    *   Follow the instructions to generate a Certificate Signing Request (CSR) using Keychain Access, upload it, and download your certificate (`.cer` file).
+    *   Double-click the downloaded `.cer` file to install it into your Keychain Access.
+    *   Verify installation by running `security find-identity -p codesigning -v` in your terminal. Note down your "Developer ID Application Identity" (e.g., `"Developer ID Application: Your Company Name (XXXXXXXXXX)"`).
+
+2.  **Code Sign the Application**:
+    Navigate to the directory containing your packaged `.app` bundle (e.g., `desktop/VSCode-darwin-arm64/Compass.app`).
+    Execute the following command, replacing `"Developer ID Application: Your Company Name (XXXXXXXXXX)"` with your actual identity:
+
+    ```bash
+    codesign --force --deep --options=runtime --sign "Developer ID Application: Your Company Name (XXXXXXXXXX)" "VSCode-darwin-arm64/Compass.app"
+    ```
+
+    *   `--force`: Overwrites any existing signature.
+    *   `--deep`: Signs all nested code within the bundle.
+    *   `--options=runtime`: Enables the hardened runtime, a prerequisite for notarization.
+    *   `--sign "..."`: Specifies your Developer ID Application identity.
+
+3.  **Create a Notarization Archive**:
+    Create a `.zip` archive of your signed application. This archive will be submitted to Apple for notarization.
+
+    ```bash
+    ditto -c -k --sequesterRsrc --keepParent VSCode-darwin-arm64/Compass.app Compass-darwin-arm64-signed.zip
+    ```
+
+4.  **Submit for Notarization**:
+    Use the `notarytool` command to submit your archive to Apple. Replace `your-apple-id@example.com` with your Apple ID and `your-app-specific-password` with the password you generated.
+
+    ```bash
+    xcrun notarytool submit Compass-darwin-arm64-signed.zip --apple-id "your-apple-id@example.com" --password "your-app-specific-password" --team-id "XXXXXXXXXX" --wait
+    ```
+
+    *   `--team-id`: Your 10-character Apple Developer Team ID (found in your Apple Developer account).
+    *   `--wait`: Waits for the notarization process to complete and displays the status.
+
+5.  **Staple the Notarization Ticket**:
+    Once notarization is successful, Apple issues a ticket. You need to "staple" this ticket to your application bundle.
+
+    ```bash
+    xcrun stapler staple VSCode-darwin-arm64/Compass.app
+    ```
+
+After these steps, your `Compass.app` bundle will be signed and notarized, and users should be able to open it without Gatekeeper warnings.
+
+### Temporary Workaround (for testing only):
+
+If you need to test an unnotarized app, users can manually remove the quarantine attribute:
+
+1.  Download and unzip the application.
+2.  Open Terminal and navigate to the directory containing the `.app` bundle.
+3.  Execute: `xattr -cr VSCode-darwin-arm64/Compass.app`
 ## Feedback
 
 * Ask a question on [Stack Overflow](https://stackoverflow.com/questions/tagged/vscode)
