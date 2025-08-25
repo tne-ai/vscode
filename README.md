@@ -38,6 +38,82 @@ please see the document [How to Contribute](https://github.com/microsoft/vscode/
 * [Finding an issue to work on](https://github.com/microsoft/vscode/wiki/How-to-Contribute#where-to-contribute)
 * [Contributing to translations](https://aka.ms/vscodeloc)
 
+## Building and Packaging the Application
+
+This section outlines the steps to build and package the Compass application for various platforms. The build process uses `npm` for dependency management and `gulp` for task automation.
+
+### Prerequisites:
+
+*   Node.js (LTS version recommended)
+*   npm (usually comes with Node.js)
+
+### Build Steps:
+
+1.  **Navigate to the `desktop/vscode` directory**:
+    All build commands should be executed from this directory.
+
+    ```bash
+    cd desktop/vscode
+    ```
+
+2.  **Install Dependencies**:
+    Install all necessary Node.js dependencies for the main application and its extensions.
+
+    ```bash
+    npm install
+    ```
+
+3.  **Compile the Application**:
+    Compile the application's source code. This prepares the files for packaging.
+
+    ```bash
+    node ./node_modules/gulp/bin/gulp.js compile
+    ```
+
+4.  **Build the Compass Extension VSIX**:
+    Ensure your Compass extension VSIX is built and available in `extern/compass/bin/`. If not, you'll need to build it separately (e.g., using `vsce package` in your extension's directory). The `inject-extension.mjs` script will automatically pick up the latest VSIX by modification time.
+
+
+6.  **Package the Application for Release**:
+    After compilation and extension injection, package the application for your desired platform and architecture. The output will be a directory (e.g., `VSCode-darwin-arm64/`) in the `desktop/` directory.
+
+    Choose your target platform and architecture:
+    *   **macOS (darwin):** `x64`, `arm64`
+    *   **Windows (win32):** `x64`, `arm64`
+    *   **Linux:** `x64`, `armhf`, `arm64`
+
+    Execute the corresponding Gulp task. For example, for macOS `arm64`:
+
+    ```bash
+    node ./node_modules/gulp/bin/gulp.js vscode-darwin-arm64
+    ```
+
+    Replace `vscode-darwin-arm64` with the appropriate task for your target (e.g., `vscode-darwin-x64`, `vscode-win32-x64`, `vscode-linux-x64`).
+
+7.  **Inject the Compass Extension**:
+    The main application build process does *not* automatically inject the Compass extension. You must manually run the `inject-extension.mjs` script to include your custom extension into the built application bundle. This step should be performed *after* the main application packaging (Step 6).
+
+    First, navigate to the `desktop/compass-desktop/scripts/` directory. Then, run the script, specifying your target platform (e.g., `darwin` for macOS) and the path to the *newly created* application bundle.
+
+    ```bash
+    cd ../../compass-desktop/scripts/
+    node inject-extension.mjs darwin --app-path /Users/lhahn1/ws/git/compass-ide/desktop/VSCode-darwin-arm64/Compass.app # Adjust path and platform as needed
+    cd ../../vscode/ # Return to the desktop/vscode directory
+    ```
+
+    *Note: This script will find the latest `.vsix` file in `extern/compass/bin/` and inject it into the appropriate location within the built application bundle. The `--app-path` argument is crucial here to ensure the correct application bundle is modified.*
+
+8.  **Create a Distributable Archive**:
+    Finally, create a zip archive of the packaged application directory for easy distribution. Navigate to the `desktop/` directory and execute the `zip` command.
+
+    For macOS `arm64`:
+
+    ```bash
+    cd ../ # Navigate to the desktop/ directory
+    zip -r Compass-darwin-arm64.zip VSCode-darwin-arm64
+    ```
+
+    Replace `Compass-darwin-arm64.zip` and `VSCode-darwin-arm64` with the appropriate names for your target platform and architecture.
 ## Packaging and Distribution for macOS
 
 When distributing the Compass application for macOS, you may encounter Gatekeeper warnings such as "“Compass” cannot be opened because the developer cannot be verified" or "“Compass” is damaged and can’t be opened." These issues arise because the application is not properly signed and notarized by Apple.
