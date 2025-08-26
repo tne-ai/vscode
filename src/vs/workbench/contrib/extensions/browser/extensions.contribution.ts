@@ -4,8 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import './media/extensionManagement.css';
+import './ceoView.css'; // Import the new CSS file
 import { localize, localize2 } from '../../../../nls.js';
-import { KeyMod, KeyCode } from '../../../../base/common/keyCodes.js';
+
 import { Registry } from '../../../../platform/registry/common/platform.js';
 import { MenuRegistry, MenuId, registerAction2, Action2, IMenuItem, IAction2Options } from '../../../../platform/actions/common/actions.js';
 import { InstantiationType, registerSingleton } from '../../../../platform/instantiation/common/extensions.js';
@@ -18,7 +19,7 @@ import { VIEWLET_ID, IExtensionsWorkbenchService, IExtensionsViewPaneContainer, 
 import { InstallSpecificVersionOfExtensionAction, ConfigureWorkspaceRecommendedExtensionsAction, ConfigureWorkspaceFolderRecommendedExtensionsAction, SetColorThemeAction, SetFileIconThemeAction, SetProductIconThemeAction, ClearLanguageAction, ToggleAutoUpdateForExtensionAction, ToggleAutoUpdatesForPublisherAction, TogglePreReleaseExtensionAction, InstallAnotherVersionAction, InstallAction } from './extensionsActions.js';
 import { ExtensionsInput } from '../common/extensionsInput.js';
 import { ExtensionEditor } from './extensionEditor.js';
-import { StatusUpdater, MaliciousExtensionChecker, ExtensionsViewletViewsContribution, ExtensionsViewPaneContainer, BuiltInExtensionsContext, SearchMarketplaceExtensionsContext, RecommendedExtensionsContext, ExtensionsSortByContext, SearchHasTextContext, ExtensionsSearchValueContext, ExtensionMarketplaceStatusUpdater } from './extensionsViewlet.js';
+import { StatusUpdater, MaliciousExtensionChecker, ExtensionsViewletViewsContribution, BuiltInExtensionsContext, SearchMarketplaceExtensionsContext, RecommendedExtensionsContext, ExtensionsSortByContext, SearchHasTextContext, ExtensionsSearchValueContext, ExtensionMarketplaceStatusUpdater } from './extensionsViewlet.js';
 import { IConfigurationRegistry, Extensions as ConfigurationExtensions, ConfigurationScope } from '../../../../platform/configuration/common/configurationRegistry.js';
 import * as jsonContributionRegistry from '../../../../platform/jsonschemas/common/jsonContributionRegistry.js';
 import { ExtensionsConfigurationSchema, ExtensionsConfigurationSchemaId } from '../common/extensionsFileTemplate.js';
@@ -28,12 +29,11 @@ import { KeymapExtensions } from '../common/extensionsUtils.js';
 import { areSameExtensions, getIdAndVersion } from '../../../../platform/extensionManagement/common/extensionManagementUtil.js';
 import { EditorPaneDescriptor, IEditorPaneRegistry } from '../../../browser/editor.js';
 import { LifecyclePhase } from '../../../services/lifecycle/common/lifecycle.js';
-import { URI, UriComponents } from '../../../../base/common/uri.js';
+import { UriComponents } from '../../../../base/common/uri.js';
 import { ExtensionActivationProgress } from './extensionsActivationProgress.js';
 import { onUnexpectedError } from '../../../../base/common/errors.js';
 import { ExtensionDependencyChecker } from './extensionsDependencyChecker.js';
 import { CancellationToken } from '../../../../base/common/cancellation.js';
-import { IViewContainersRegistry, ViewContainerLocation, Extensions as ViewContainerExtensions } from '../../../common/views.js';
 import { IViewsService } from '../../../services/views/common/viewsService.js';
 import { IClipboardService } from '../../../../platform/clipboard/common/clipboardService.js';
 import { IPreferencesService } from '../../../services/preferences/common/preferences.js';
@@ -58,7 +58,7 @@ import { IWorkspaceExtensionsConfigService } from '../../../services/extensionRe
 import { Schemas } from '../../../../base/common/network.js';
 import { ShowRuntimeExtensionsAction } from './abstractRuntimeExtensionsEditor.js';
 import { ExtensionEnablementWorkspaceTrustTransitionParticipant } from './extensionEnablementWorkspaceTrustTransitionParticipant.js';
-import { clearSearchResultsIcon, configureRecommendedIcon, extensionsViewIcon, filterIcon, installWorkspaceRecommendedIcon, refreshIcon } from './extensionsIcons.js';
+import { clearSearchResultsIcon, configureRecommendedIcon, filterIcon, installWorkspaceRecommendedIcon, refreshIcon } from './extensionsIcons.js';
 import { EXTENSION_CATEGORIES, ExtensionType } from '../../../../platform/extensions/common/extensions.js';
 import { Disposable, DisposableStore, IDisposable, isDisposable } from '../../../../base/common/lifecycle.js';
 import { IDialogService, IFileDialogService } from '../../../../platform/dialogs/common/dialogs.js';
@@ -81,10 +81,27 @@ import { IConfigurationMigrationRegistry, Extensions as ConfigurationMigrationEx
 import { IProductService } from '../../../../platform/product/common/productService.js';
 import { IUserDataProfilesService } from '../../../../platform/userDataProfile/common/userDataProfile.js';
 import product from '../../../../platform/product/common/product.js';
-import { ExtensionGalleryResourceType, ExtensionGalleryServiceUrlConfigKey, getExtensionGalleryManifestResourceUri, IExtensionGalleryManifestService, ExtensionGalleryManifestStatus, IExtensionGalleryManifest } from '../../../../platform/extensionManagement/common/extensionGalleryManifest.js';
 import { ILanguageModelToolsService } from '../../chat/common/languageModelToolsService.js';
 import { SearchExtensionsTool, SearchExtensionsToolData } from '../common/searchExtensionsTool.js';
 import { DEFAULT_ACCOUNT_SIGN_IN_COMMAND } from '../../../services/accounts/common/defaultAccount.js';
+import { IExtensionGalleryManifestService, IExtensionGalleryManifest, ExtensionGalleryManifestStatus, ExtensionGalleryResourceType, getExtensionGalleryManifestResourceUri, ExtensionGalleryServiceUrlConfigKey } from '../../../../platform/extensionManagement/common/extensionGalleryManifest.js';
+// CEO View imports
+import { IViewsRegistry, IViewContainersRegistry, Extensions as ViewExtensions, ViewContainerLocation, IViewDescriptorService } from '../../../common/views.js';
+import { ViewPaneContainer } from '../../../browser/parts/views/viewPaneContainer.js';
+import { ViewPane, IViewPaneOptions } from '../../../browser/parts/views/viewPane.js';
+import { IKeybindingService } from '../../../../platform/keybinding/common/keybinding.js';
+import { IContextMenuService } from '../../../../platform/contextview/browser/contextView.js';
+import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
+import { IOpenerService } from '../../../../platform/opener/common/opener.js';
+import { IThemeService } from '../../../../platform/theme/common/themeService.js';
+import { IHoverService } from '../../../../platform/hover/browser/hover.js';
+import { Codicon } from '../../../../base/common/codicons.js';
+import { ITelemetryService } from '../../../../platform/telemetry/common/telemetry.js';
+import { IFileService } from '../../../../platform/files/common/files.js';
+import { IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
+import { URI } from '../../../../base/common/uri.js';
+import { joinPath } from '../../../../base/common/resources.js';
+import { VSBuffer } from '../../../../base/common/buffer.js';
 
 // Singletons
 registerSingleton(IExtensionsWorkbenchService, ExtensionsWorkbenchService, InstantiationType.Eager /* Auto updates extensions */);
@@ -110,22 +127,9 @@ Registry.as<IEditorPaneRegistry>(EditorExtensions.EditorPane).registerEditorPane
 		new SyncDescriptor(ExtensionsInput)
 	]);
 
-export const VIEW_CONTAINER = Registry.as<IViewContainersRegistry>(ViewContainerExtensions.ViewContainersRegistry).registerViewContainer(
-	{
-		id: VIEWLET_ID,
-		title: localize2('extensions', "Extensions"),
-		openCommandActionDescriptor: {
-			id: VIEWLET_ID,
-			mnemonicTitle: localize({ key: 'miViewExtensions', comment: ['&& denotes a mnemonic'] }, "E&&xtensions"),
-			keybindings: { primary: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyX },
-			order: 4,
-		},
-		ctorDescriptor: new SyncDescriptor(ExtensionsViewPaneContainer),
-		icon: extensionsViewIcon,
-		order: 4,
-		rejectAddedViews: true,
-		alwaysUseContainerInfo: true,
-	}, ViewContainerLocation.Sidebar);
+// Extensions view container removed from activity bar
+// Export a placeholder for MCP compatibility
+export const VIEW_CONTAINER = undefined;
 
 Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Configuration)
 	.registerConfiguration({
@@ -1379,6 +1383,7 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 		this.registerExtensionAction({
 			id: 'workbench.extensions.action.showReleasedVersion',
 			title: localize2('show released version', 'Show Release Version'),
+			category: ExtensionsLocalizedLabel,
 			menu: {
 				id: MenuId.ExtensionContext,
 				group: INSTALL_ACTIONS_GROUP,
@@ -1472,7 +1477,7 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 				id: MenuId.ExtensionContext,
 				group: INSTALL_ACTIONS_GROUP,
 				order: 2,
-				when: ContextKeyExpr.and(CONTEXT_HAS_GALLERY, ContextKeyExpr.has('galleryExtensionHasPreReleaseVersion'), ContextKeyExpr.has('isExtensionAllowed'), ContextKeyExpr.has('installedExtensionIsOptedToPreRelease'), ContextKeyExpr.not('inExtensionEditor'), ContextKeyExpr.equals('extensionStatus', 'installed'), ContextKeyExpr.not('isBuiltinExtension'))
+				when: ContextKeyExpr.and(CONTEXT_HAS_GALLERY, ContextKeyExpr.has('galleryExtensionHasPreReleaseVersion'), ContextKeyExpr.has('isExtensionAllowed'), ContextKeyExpr.has('installedExtensionIsOptedToToPreRelease'), ContextKeyExpr.not('inExtensionEditor'), ContextKeyExpr.equals('extensionStatus', 'installed'), ContextKeyExpr.not('isBuiltinExtension'))
 			},
 			run: async (accessor: ServicesAccessor, id: string) => {
 				const instantiationService = accessor.get(IInstantiationService);
@@ -1832,7 +1837,8 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 			category: EXTENSIONS_CATEGORY,
 			menu: {
 				id: MenuId.CommandPalette,
-				when: ContextKeyExpr.and(WorkbenchStateContext.isEqualTo('folder'), ContextKeyExpr.equals('resourceScheme', Schemas.extension)),
+				when: ContextKeyExpr.and(WorkbenchStateContext.isEqualTo('folder'),
+				ContextKeyExpr.equals('resourceScheme', Schemas.extension)),
 			},
 			run: () => this.commandService.executeCommand('workbench.extensions.action.addToWorkspaceRecommendations')
 		});
@@ -1862,7 +1868,7 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 
 		this.registerExtensionAction({
 			id: 'workbench.extensions.action.addToWorkspaceFolderIgnoredRecommendations',
-			title: localize2('workbench.extensions.action.addToWorkspaceFolderIgnoredRecommendations', "Add Extension to Workspace Folder Ignored Recommendations"),
+			title: localize2('workbench.extensions.action.addToWorkspaceFolderIgnoredRecommendations', "Add Extension to Workspace Folder Recommendations"),
 			category: EXTENSIONS_CATEGORY,
 			menu: {
 				id: MenuId.CommandPalette,
@@ -2062,3 +2068,355 @@ Registry.as<IConfigurationMigrationRegistry>(ConfigurationMigrationExtensions.Co
 			return [];
 		}
 	}]);
+
+// CEO View: Sidebar container and view wired to Compass
+const CEO_VIEW_CONTAINER_ID = 'workbench.view.ceo';
+const CEO_VIEW_ID = 'workbench.view.ceoView';
+
+interface CompanyInfo {
+	name: string;
+	industry: string;
+}
+
+class CEOView extends ViewPane {
+	static readonly ID = CEO_VIEW_ID;
+
+	private input!: HTMLTextAreaElement;
+	private sendBtn!: HTMLButtonElement;
+	private newTaskToggle!: HTMLInputElement;
+	private companyNameInput!: HTMLInputElement;
+	private industryInput!: HTMLInputElement;
+	private reportChecklist!: HTMLElement;
+
+	private companyInfo: CompanyInfo = { name: '', industry: '' };
+
+	constructor(
+		options: IViewPaneOptions,
+		@IKeybindingService keybindingService: IKeybindingService,
+		@IContextMenuService contextMenuService: IContextMenuService,
+		@IConfigurationService configurationService: IConfigurationService,
+		@IContextKeyService contextKeyService: IContextKeyService,
+		@IViewDescriptorService viewDescriptorService: IViewDescriptorService,
+		@IInstantiationService instantiationService: IInstantiationService,
+		@IOpenerService openerService: IOpenerService,
+		@IThemeService themeService: IThemeService,
+		@IHoverService hoverService: IHoverService,
+		@ICommandService private readonly commandService: ICommandService,
+		@INotificationService private readonly notificationService: INotificationService,
+		@ITelemetryService private readonly telemetryService: ITelemetryService,
+		@IFileService private readonly fileService: IFileService,
+		@IWorkspaceContextService private readonly workspaceContextService: IWorkspaceContextService,
+	) {
+		super(
+			{ ...options, titleMenuId: MenuId.ViewTitle, singleViewPaneContainerTitle: 'CEO Analysis' },
+			keybindingService,
+			contextMenuService,
+			configurationService,
+			contextKeyService,
+			viewDescriptorService,
+			instantiationService,
+			openerService,
+			themeService,
+			hoverService
+		);
+		this._register(this.onDidChangeBodyVisibility(() => this.onBodyVisibilityChange()));
+	}
+
+	protected override renderBody(container: HTMLElement): void {
+		super.renderBody(container);
+
+		const contentContainer = document.createElement('div');
+		contentContainer.className = 'ceo-view-content';
+		container.appendChild(contentContainer);
+
+		// Company Info Section
+		const companyInfoSection = document.createElement('div');
+		companyInfoSection.className = 'ceo-company-info-section';
+		contentContainer.appendChild(companyInfoSection);
+
+		const companyNameLabel = document.createElement('label');
+		companyNameLabel.textContent = localize('ceo.companyName', "Company Name:");
+		companyInfoSection.appendChild(companyNameLabel);
+		this.companyNameInput = document.createElement('input');
+		this.companyNameInput.type = 'text';
+		this.companyNameInput.placeholder = localize('ceo.companyNamePlaceholder', "Enter company name");
+		this.companyNameInput.className = 'ceo-input';
+		this.companyNameInput.addEventListener('change', () => this.saveCompanyInfo());
+		companyInfoSection.appendChild(this.companyNameInput);
+
+		const industryLabel = document.createElement('label');
+		industryLabel.textContent = localize('ceo.industry', "Industry:");
+		companyInfoSection.appendChild(industryLabel);
+		this.industryInput = document.createElement('input');
+		this.industryInput.type = 'text';
+		this.industryInput.placeholder = localize('ceo.industryPlaceholder', "Enter industry");
+		this.industryInput.className = 'ceo-input';
+		this.industryInput.addEventListener('change', () => this.saveCompanyInfo());
+		companyInfoSection.appendChild(this.industryInput);
+
+		// Reports Checklist Section
+		const reportsSection = document.createElement('div');
+		reportsSection.className = 'ceo-reports-section';
+		contentContainer.appendChild(reportsSection);
+
+		const reportsTitle = document.createElement('div');
+		reportsTitle.textContent = localize('ceo.reportsTitle', "TNE-CONTEXT Reports:");
+		reportsTitle.className = 'ceo-section-title';
+		reportsSection.appendChild(reportsTitle);
+
+		this.reportChecklist = document.createElement('div');
+		this.reportChecklist.className = 'ceo-report-checklist';
+		reportsSection.appendChild(this.reportChecklist);
+
+		// Separator
+		const separator = document.createElement('hr');
+		separator.className = 'ceo-separator';
+		contentContainer.appendChild(separator);
+
+		// Original Input and Controls
+		this.input = document.createElement('textarea');
+		this.input.rows = 6;
+		this.input.placeholder = localize('ceo.placeholder', "Type a message for Compass…");
+		this.input.title = localize('ceo.kb.hint', "Tip: Press Cmd/Ctrl+Enter to send");
+		this.input.maxLength = 4000;
+		this.input.className = 'ceo-textarea';
+		this.input.addEventListener('keydown', (e: KeyboardEvent) => {
+			if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+				e.preventDefault();
+				this.send();
+			}
+		});
+		contentContainer.appendChild(this.input);
+
+		const controls = document.createElement('div');
+		controls.className = 'ceo-controls';
+
+		// Start new task toggle
+		this.newTaskToggle = document.createElement('input');
+		this.newTaskToggle.type = 'checkbox';
+		this.newTaskToggle.checked = true;
+		this.newTaskToggle.id = 'ceo-new-task-toggle';
+		this.newTaskToggle.title = localize('ceo.newtask.hint', "When checked, starts a new Compass task. Uncheck to send to the current thread.");
+		const newTaskLabel = document.createElement('label');
+		newTaskLabel.htmlFor = this.newTaskToggle.id;
+		newTaskLabel.textContent = localize('ceo.newtask', "Start new task");
+
+		const leftGroup = document.createElement('div');
+		leftGroup.style.display = 'flex';
+		leftGroup.style.alignItems = 'center';
+		leftGroup.style.gap = '6px';
+		leftGroup.appendChild(this.newTaskToggle);
+		leftGroup.appendChild(newTaskLabel);
+		controls.appendChild(leftGroup);
+
+		// Send button
+		this.sendBtn = document.createElement('button');
+		this.sendBtn.type = 'button';
+		this.sendBtn.textContent = localize('ceo.send', "Send to Compass");
+		this.sendBtn.title = localize('ceo.kb.hint.btn', "Cmd/Ctrl+Enter to send");
+		this.sendBtn.addEventListener('click', () => this.send());
+		controls.appendChild(this.sendBtn);
+
+		// Disable send when input is empty/whitespace
+		const updateDisabled = () => {
+			this.sendBtn.disabled = (this.input.value.trim().length === 0);
+		};
+		this.input.addEventListener('input', updateDisabled);
+		updateDisabled();
+
+		controls.style.display = 'flex';
+		controls.style.alignItems = 'center';
+		controls.style.gap = '8px';
+
+		// Start new task toggle
+		this.newTaskToggle = document.createElement('input');
+		this.newTaskToggle.type = 'checkbox';
+		this.newTaskToggle.checked = true;
+		this.newTaskToggle.id = 'ceo-new-task-toggle';
+		this.newTaskToggle.title = localize('ceo.newtask.hint', "When checked, starts a new Compass task. Uncheck to send to the current thread.");
+		const newTaskLabelElement = document.createElement('label');
+		newTaskLabelElement.htmlFor = this.newTaskToggle.id;
+		newTaskLabelElement.textContent = localize('ceo.newtask', "Start new task");
+
+		const leftGroupElement = document.createElement('div');
+		leftGroupElement.style.display = 'flex';
+		leftGroupElement.style.alignItems = 'center';
+		leftGroupElement.style.gap = '6px';
+		leftGroupElement.appendChild(this.newTaskToggle);
+		leftGroupElement.appendChild(newTaskLabelElement);
+		controls.appendChild(leftGroupElement);
+
+		// Send button
+		this.sendBtn = document.createElement('button');
+		this.sendBtn.type = 'button';
+		this.sendBtn.textContent = localize('ceo.send', "Send to Compass");
+		this.sendBtn.title = localize('ceo.kb.hint.btn', "Cmd/Ctrl+Enter to send");
+		this.sendBtn.className = 'ceo-send-button';
+		this.sendBtn.addEventListener('click', () => this.send());
+		controls.appendChild(this.sendBtn);
+
+		// Disable send when input is empty/whitespace
+		const updateDisabledState = () => {
+			this.sendBtn.disabled = (this.input.value.trim().length === 0);
+		};
+		this.input.addEventListener('input', updateDisabledState);
+		updateDisabledState();
+
+		contentContainer.appendChild(controls);
+		this.loadCompanyInfo();
+		this.updateReportChecklist();
+	}
+
+	private onBodyVisibilityChange(): void {
+		if (this.isBodyVisible()) {
+			this.loadCompanyInfo();
+			this.updateReportChecklist();
+		}
+	}
+
+	private getCompanyInfoFilePath(): URI {
+		const workspaceFolders = this.workspaceContextService.getWorkspace().folders;
+		if (workspaceFolders.length > 0) {
+			return joinPath(workspaceFolders[0].uri, 'company-info.json');
+		}
+		// Fallback to a default path if no workspace is open
+		return URI.file('/tmp/company-info.json');
+	}
+
+	private async loadCompanyInfo(): Promise<void> {
+		const filePath = this.getCompanyInfoFilePath();
+		try {
+			const content = await this.fileService.readFile(filePath);
+			this.companyInfo = JSON.parse(content.value.toString());
+			this.companyNameInput.value = this.companyInfo.name;
+			this.industryInput.value = this.companyInfo.industry;
+		} catch (error) {
+			if (error.fileOperationResult === 1 /* FileOperationResult.FILE_NOT_FOUND */) {
+				this.notificationService.info(localize('ceo.companyInfo.notFound', "company-info.json not found. Please enter company details."));
+				this.companyInfo = { name: '', industry: '' };
+				this.companyNameInput.value = '';
+				this.industryInput.value = '';
+			} else {
+				this.notificationService.error(localize('ceo.companyInfo.loadError', "Failed to load company-info.json: {0}", error.message));
+			}
+		}
+	}
+
+	private async saveCompanyInfo(): Promise<void> {
+		this.companyInfo.name = this.companyNameInput.value.trim();
+		this.companyInfo.industry = this.industryInput.value.trim();
+		const filePath = this.getCompanyInfoFilePath();
+		try {
+			await this.fileService.writeFile(filePath, VSBuffer.fromString(JSON.stringify(this.companyInfo, null, 2)));
+			this.notificationService.info(localize('ceo.companyInfo.saveSuccess', "Company info saved."));
+		} catch (error) {
+			this.notificationService.error(localize('ceo.companyInfo.saveError', "Failed to save company-info.json: {0}", error.message));
+		}
+	}
+
+	private async updateReportChecklist(): Promise<void> {
+		this.reportChecklist.innerHTML = ''; // Clear existing checklist
+		const tneContextPath = this.getTNEContextPath();
+		const reports = [
+			'b1-strategic-facts.md',
+			'b2-disruption-recos.md',
+			'b3-strategic-decisions.md',
+			'b4-implementation-plan.md',
+			'b5-partners.md',
+			'b6-workflow.md'
+		];
+
+		for (const report of reports) {
+			const listItem = document.createElement('div');
+			listItem.className = 'ceo-report-item';
+
+			const checkbox = document.createElement('input');
+			checkbox.type = 'checkbox';
+			checkbox.id = `report-${report}`;
+			checkbox.disabled = true; // Checkboxes are read-only
+
+			const label = document.createElement('label');
+			label.htmlFor = checkbox.id;
+			label.textContent = report;
+
+			try {
+				const reportUri = joinPath(tneContextPath, report);
+				await this.fileService.resolve(reportUri);
+				checkbox.checked = true;
+				label.classList.add('checked');
+			} catch (error) {
+				checkbox.checked = false;
+				label.classList.add('unchecked');
+			}
+
+			listItem.appendChild(checkbox);
+			listItem.appendChild(label);
+			this.reportChecklist.appendChild(listItem);
+		}
+	}
+
+	private getTNEContextPath(): URI {
+		const workspaceFolders = this.workspaceContextService.getWorkspace().folders;
+		if (workspaceFolders.length > 0) {
+			return joinPath(workspaceFolders[0].uri, 'TNE-CONTEXT');
+		}
+		// Fallback to a default path if no workspace is open
+		return URI.file('/tmp/TNE-CONTEXT');
+	}
+
+	// Override shouldShowWelcome to ensure our custom content is always shown
+	override shouldShowWelcome(): boolean {
+		return false;
+	}
+
+	private async send() {
+		const text = (this.input.value ?? '').trim();
+		if (!text) {
+			this.notificationService.warn(localize('ceo.empty', "Enter a message to send."));
+			return;
+		}
+		const newTask = this.newTaskToggle?.checked ?? true;
+		const length = text.length;
+
+		// Disable while sending
+		this.sendBtn.disabled = true;
+		try {
+			// Use Compass extension command to send message with explicit newTask toggle
+			await this.commandService.executeCommand('compass.service.startTask', { message: text, newTask });
+			this.input.value = '';
+			this.notificationService.info(localize('ceo.send.success', "Message sent to Compass"));
+			this.telemetryService.publicLog('compassCeoSend', { outcome: 'success', newTask, length });
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : String(err);
+			this.notificationService.error(localize('ceo.send.error', "Failed to send: {0}", msg));
+			this.telemetryService.publicLog('compassCeoSend', { outcome: 'error', newTask, length, message: msg });
+		} finally {
+			// Recompute disabled state after send
+			this.sendBtn.disabled = (this.input.value.trim().length === 0);
+		}
+	}
+}
+
+// Register CEO container in the primary Side Bar
+const ceoViewContainer = Registry.as<IViewContainersRegistry>(ViewExtensions.ViewContainersRegistry).registerViewContainer(
+	{
+		id: CEO_VIEW_CONTAINER_ID,
+		title: localize2('ceo', 'CEO'),
+		ctorDescriptor: new SyncDescriptor(ViewPaneContainer, [CEO_VIEW_CONTAINER_ID, { mergeViewWithContainerWhenSingleView: true }]),
+		icon: Codicon.megaphone,
+		storageId: CEO_VIEW_CONTAINER_ID,
+		order: 1
+	},
+	ViewContainerLocation.Sidebar
+);
+
+// Register the CEO view inside the container
+Registry.as<IViewsRegistry>(ViewExtensions.ViewsRegistry).registerViews([{
+	id: CEO_VIEW_ID,
+	name: localize2('ceo.view', 'CEO'),
+	containerIcon: Codicon.megaphone,
+	ctorDescriptor: new SyncDescriptor(CEOView),
+	canMoveView: true,
+	canToggleVisibility: true,
+	when: undefined,
+}], ceoViewContainer);

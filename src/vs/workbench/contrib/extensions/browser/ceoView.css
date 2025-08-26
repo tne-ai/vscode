@@ -1,0 +1,141 @@
+/* CEO View Styles */
+
+.ceo-view-content {
+    display: flex;
+    flex-direction: column;
+    padding: 12px;
+    gap: 12px;
+    height: 100%;
+    box-sizing: border-box;
+    font-family: var(--vscode-font-family);
+    color: var(--vscode-foreground);
+}
+
+.ceo-section-title {
+    font-weight: 600;
+    font-size: 1.1em;
+    margin-bottom: 8px;
+    color: var(--vscode-editor-foreground);
+}
+
+.ceo-company-info-section label {
+    font-size: 0.9em;
+    margin-bottom: 4px;
+    display: block;
+    color: var(--vscode-editor-foreground);
+}
+
+.ceo-input {
+    width: 100%;
+    padding: 8px;
+    margin-bottom: 10px;
+    border: 1px solid var(--vscode-input-border);
+    border-radius: 3px;
+    background-color: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+    box-sizing: border-box;
+}
+
+.ceo-input::placeholder {
+    color: var(--vscode-input-placeholderForeground);
+}
+
+.ceo-input:focus {
+    outline: 1px solid var(--vscode-focusBorder);
+    border-color: var(--vscode-focusBorder);
+}
+
+.ceo-reports-section {
+    margin-top: 15px;
+}
+
+.ceo-report-checklist {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.ceo-report-item {
+    display: flex;
+    align-items: center;
+    font-size: 0.9em;
+}
+
+.ceo-report-item input[type="checkbox"] {
+    margin-right: 8px;
+    accent-color: var(--vscode-button-background); /* Use a theme-consistent color */
+}
+
+.ceo-report-item label.checked {
+    color: var(--vscode-gitDecoration-addedResourceForeground); /* Greenish for existing */
+}
+
+.ceo-report-item label.unchecked {
+    color: var(--vscode-editor-warningForeground); /* Yellowish for missing */
+    opacity: 0.7;
+}
+
+.ceo-separator {
+    border: none;
+    border-top: 1px solid var(--vscode-editorGroup-border);
+    margin: 15px 0;
+}
+
+.ceo-textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--vscode-input-border);
+    border-radius: 3px;
+    background-color: var(--vscode-input-background);
+    color: var(--vscode-input-foreground);
+    box-sizing: border-box;
+    resize: vertical;
+    min-height: 80px;
+    font-family: var(--vscode-font-family);
+}
+
+.ceo-textarea::placeholder {
+    color: var(--vscode-input-placeholderForeground);
+}
+
+.ceo-textarea:focus {
+    outline: 1px solid var(--vscode-focusBorder);
+    border-color: var(--vscode-focusBorder);
+}
+
+.ceo-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between; /* Distribute items */
+    margin-top: 10px;
+}
+
+.ceo-send-button {
+    background-color: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    border: none;
+    padding: 8px 15px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background-color 0.2s ease;
+}
+
+.ceo-send-button:hover:not(:disabled) {
+    background-color: var(--vscode-button-hoverBackground);
+}
+
+.ceo-send-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.ceo-controls label {
+    font-size: 0.9em;
+    color: var(--vscode-editor-foreground);
+}
+
+.ceo-controls input[type="checkbox"] {
+    margin-right: 5px;
+    accent-color: var(--vscode-button-background);
+}

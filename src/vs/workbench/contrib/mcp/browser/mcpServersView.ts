@@ -37,7 +37,6 @@ import { Registry } from '../../../../platform/registry/common/platform.js';
 import { IWorkbenchContribution } from '../../../common/contributions.js';
 import { SyncDescriptor } from '../../../../platform/instantiation/common/descriptors.js';
 import { DefaultViewsContext, SearchMcpServersContext } from '../../extensions/common/extensions.js';
-import { VIEW_CONTAINER } from '../../extensions/browser/extensions.contribution.js';
 import { renderMarkdown } from '../../../../base/browser/markdownRenderer.js';
 import { MarkdownString } from '../../../../base/common/htmlContent.js';
 import { ChatContextKeys } from '../../chat/common/chatContextKeys.js';
@@ -452,6 +451,6 @@ export class McpServersViewsContribution extends Disposable implements IWorkbenc
 				ctorDescriptor: new SyncDescriptor(McpServersListView, [{ showWelcomeOnEmpty: true }]),
 				when: ContextKeyExpr.and(SearchMcpServersContext),
 			}
-		], VIEW_CONTAINER);
+		], undefined as any);
 	}
 }
