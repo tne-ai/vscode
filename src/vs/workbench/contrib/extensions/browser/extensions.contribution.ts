@@ -96,7 +96,6 @@ import { IOpenerService } from '../../../../platform/opener/common/opener.js';
 import { IThemeService } from '../../../../platform/theme/common/themeService.js';
 import { IHoverService } from '../../../../platform/hover/browser/hover.js';
 import { Codicon } from '../../../../base/common/codicons.js';
-import { ITelemetryService } from '../../../../platform/telemetry/common/telemetry.js';
 import { IFileService } from '../../../../platform/files/common/files.js';
 import { IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
 import { URI } from '../../../../base/common/uri.js';
@@ -2081,12 +2080,12 @@ interface CompanyInfo {
 class CEOView extends ViewPane {
 	static readonly ID = CEO_VIEW_ID;
 
-	private input!: HTMLTextAreaElement;
-	private sendBtn!: HTMLButtonElement;
-	private newTaskToggle!: HTMLInputElement;
 	private companyNameInput!: HTMLInputElement;
 	private industryInput!: HTMLInputElement;
 	private reportChecklist!: HTMLElement;
+	private contentContainer!: HTMLElement; // Declare contentContainer as a class member
+	private companyNameDisplay!: HTMLElement; // For displaying company name as header
+	private industryDisplay!: HTMLElement; // For displaying industry as header
 
 	private companyInfo: CompanyInfo = { name: '', industry: '' };
 
@@ -2103,7 +2102,6 @@ class CEOView extends ViewPane {
 		@IHoverService hoverService: IHoverService,
 		@ICommandService private readonly commandService: ICommandService,
 		@INotificationService private readonly notificationService: INotificationService,
-		@ITelemetryService private readonly telemetryService: ITelemetryService,
 		@IFileService private readonly fileService: IFileService,
 		@IWorkspaceContextService private readonly workspaceContextService: IWorkspaceContextService,
 	) {
@@ -2122,45 +2120,70 @@ class CEOView extends ViewPane {
 		this._register(this.onDidChangeBodyVisibility(() => this.onBodyVisibilityChange()));
 	}
 
-	protected override renderBody(container: HTMLElement): void {
-		super.renderBody(container);
+	protected override renderBody(parent: HTMLElement): void {
+		super.renderBody(parent);
 
-		const contentContainer = document.createElement('div');
-		contentContainer.className = 'ceo-view-content';
-		container.appendChild(contentContainer);
+		if (!this.contentContainer) {
+			this.contentContainer = document.createElement('div');
+			this.contentContainer.className = 'ceo-view-content';
+			parent.appendChild(this.contentContainer);
+		} else {
+			// Clear existing content to prevent duplication on re-render
+			while (this.contentContainer.firstChild) {
+				this.contentContainer.removeChild(this.contentContainer.firstChild);
+			}
+		}
 
 		// Company Info Section
 		const companyInfoSection = document.createElement('div');
 		companyInfoSection.className = 'ceo-company-info-section';
-		contentContainer.appendChild(companyInfoSection);
+		this.contentContainer.appendChild(companyInfoSection);
 
-		const companyNameLabel = document.createElement('label');
-		companyNameLabel.textContent = localize('ceo.companyName', "Company Name:");
-		companyInfoSection.appendChild(companyNameLabel);
+		// Add "Company" label
+		const companyLabel = document.createElement('label');
+		companyLabel.textContent = localize('ceo.companyLabel', "Company");
+		companyLabel.className = 'ceo-info-label';
+		companyInfoSection.appendChild(companyLabel);
+
+		this.companyNameDisplay = document.createElement('h1');
+		this.companyNameDisplay.className = 'ceo-company-name-display';
+		this.companyNameDisplay.addEventListener('dblclick', () => this.toggleEditMode('name', true));
+		companyInfoSection.appendChild(this.companyNameDisplay);
+
 		this.companyNameInput = document.createElement('input');
 		this.companyNameInput.type = 'text';
 		this.companyNameInput.placeholder = localize('ceo.companyNamePlaceholder', "Enter company name");
-		this.companyNameInput.className = 'ceo-input';
+		this.companyNameInput.className = 'ceo-input ceo-hidden'; // Hidden by default
 		this.companyNameInput.addEventListener('change', () => this.saveCompanyInfo());
+		this.companyNameInput.addEventListener('blur', () => this.toggleEditMode('name', false)); // Exit edit mode on blur
 		companyInfoSection.appendChild(this.companyNameInput);
 
+		// Add "Industry" label
 		const industryLabel = document.createElement('label');
-		industryLabel.textContent = localize('ceo.industry', "Industry:");
+		industryLabel.textContent = localize('ceo.industryLabel', "Industry");
+		industryLabel.className = 'ceo-info-label';
 		companyInfoSection.appendChild(industryLabel);
+
+		this.industryDisplay = document.createElement('h2');
+		this.industryDisplay.className = 'ceo-industry-display';
+		this.industryDisplay.addEventListener('dblclick', () => this.toggleEditMode('industry', true));
+		companyInfoSection.appendChild(this.industryDisplay);
+
 		this.industryInput = document.createElement('input');
 		this.industryInput.type = 'text';
 		this.industryInput.placeholder = localize('ceo.industryPlaceholder', "Enter industry");
-		this.industryInput.className = 'ceo-input';
+		this.industryInput.className = 'ceo-input ceo-hidden'; // Hidden by default
 		this.industryInput.addEventListener('change', () => this.saveCompanyInfo());
+		this.industryInput.addEventListener('blur', () => this.toggleEditMode('industry', false)); // Exit edit mode on blur
 		companyInfoSection.appendChild(this.industryInput);
 
 		// Reports Checklist Section
 		const reportsSection = document.createElement('div');
 		reportsSection.className = 'ceo-reports-section';
-		contentContainer.appendChild(reportsSection);
+		this.contentContainer.appendChild(reportsSection);
 
 		const reportsTitle = document.createElement('div');
-		reportsTitle.textContent = localize('ceo.reportsTitle', "TNE-CONTEXT Reports:");
+		reportsTitle.textContent = localize('ceo.reportsTitle', "Status"); // Changed title
 		reportsTitle.className = 'ceo-section-title';
 		reportsSection.appendChild(reportsTitle);
 
@@ -2171,99 +2194,11 @@ class CEOView extends ViewPane {
 		// Separator
 		const separator = document.createElement('hr');
 		separator.className = 'ceo-separator';
-		contentContainer.appendChild(separator);
+		this.contentContainer.appendChild(separator);
 
-		// Original Input and Controls
-		this.input = document.createElement('textarea');
-		this.input.rows = 6;
-		this.input.placeholder = localize('ceo.placeholder', "Type a message for Compass…");
-		this.input.title = localize('ceo.kb.hint', "Tip: Press Cmd/Ctrl+Enter to send");
-		this.input.maxLength = 4000;
-		this.input.className = 'ceo-textarea';
-		this.input.addEventListener('keydown', (e: KeyboardEvent) => {
-			if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-				e.preventDefault();
-				this.send();
-			}
-		});
-		contentContainer.appendChild(this.input);
+		// Removed: Original Input and Controls (textarea, send button, new task toggle)
 
-		const controls = document.createElement('div');
-		controls.className = 'ceo-controls';
-
-		// Start new task toggle
-		this.newTaskToggle = document.createElement('input');
-		this.newTaskToggle.type = 'checkbox';
-		this.newTaskToggle.checked = true;
-		this.newTaskToggle.id = 'ceo-new-task-toggle';
-		this.newTaskToggle.title = localize('ceo.newtask.hint', "When checked, starts a new Compass task. Uncheck to send to the current thread.");
-		const newTaskLabel = document.createElement('label');
-		newTaskLabel.htmlFor = this.newTaskToggle.id;
-		newTaskLabel.textContent = localize('ceo.newtask', "Start new task");
-
-		const leftGroup = document.createElement('div');
-		leftGroup.style.display = 'flex';
-		leftGroup.style.alignItems = 'center';
-		leftGroup.style.gap = '6px';
-		leftGroup.appendChild(this.newTaskToggle);
-		leftGroup.appendChild(newTaskLabel);
-		controls.appendChild(leftGroup);
-
-		// Send button
-		this.sendBtn = document.createElement('button');
-		this.sendBtn.type = 'button';
-		this.sendBtn.textContent = localize('ceo.send', "Send to Compass");
-		this.sendBtn.title = localize('ceo.kb.hint.btn', "Cmd/Ctrl+Enter to send");
-		this.sendBtn.addEventListener('click', () => this.send());
-		controls.appendChild(this.sendBtn);
-
-		// Disable send when input is empty/whitespace
-		const updateDisabled = () => {
-			this.sendBtn.disabled = (this.input.value.trim().length === 0);
-		};
-		this.input.addEventListener('input', updateDisabled);
-		updateDisabled();
-
-		controls.style.display = 'flex';
-		controls.style.alignItems = 'center';
-		controls.style.gap = '8px';
-
-		// Start new task toggle
-		this.newTaskToggle = document.createElement('input');
-		this.newTaskToggle.type = 'checkbox';
-		this.newTaskToggle.checked = true;
-		this.newTaskToggle.id = 'ceo-new-task-toggle';
-		this.newTaskToggle.title = localize('ceo.newtask.hint', "When checked, starts a new Compass task. Uncheck to send to the current thread.");
-		const newTaskLabelElement = document.createElement('label');
-		newTaskLabelElement.htmlFor = this.newTaskToggle.id;
-		newTaskLabelElement.textContent = localize('ceo.newtask', "Start new task");
-
-		const leftGroupElement = document.createElement('div');
-		leftGroupElement.style.display = 'flex';
-		leftGroupElement.style.alignItems = 'center';
-		leftGroupElement.style.gap = '6px';
-		leftGroupElement.appendChild(this.newTaskToggle);
-		leftGroupElement.appendChild(newTaskLabelElement);
-		controls.appendChild(leftGroupElement);
-
-		// Send button
-		this.sendBtn = document.createElement('button');
-		this.sendBtn.type = 'button';
-		this.sendBtn.textContent = localize('ceo.send', "Send to Compass");
-		this.sendBtn.title = localize('ceo.kb.hint.btn', "Cmd/Ctrl+Enter to send");
-		this.sendBtn.className = 'ceo-send-button';
-		this.sendBtn.addEventListener('click', () => this.send());
-		controls.appendChild(this.sendBtn);
-
-		// Disable send when input is empty/whitespace
-		const updateDisabledState = () => {
-			this.sendBtn.disabled = (this.input.value.trim().length === 0);
-		};
-		this.input.addEventListener('input', updateDisabledState);
-		updateDisabledState();
-
-		contentContainer.appendChild(controls);
-		this.loadCompanyInfo();
+		this.loadCompanyInfo(); // This will now handle rendering headers or inputs
 		this.updateReportChecklist();
 	}
 
@@ -2274,28 +2209,35 @@ class CEOView extends ViewPane {
 		}
 	}
 
-	private getCompanyInfoFilePath(): URI {
-		const workspaceFolders = this.workspaceContextService.getWorkspace().folders;
-		if (workspaceFolders.length > 0) {
-			return joinPath(workspaceFolders[0].uri, 'company-info.json');
-		}
-		// Fallback to a default path if no workspace is open
-		return URI.file('/tmp/company-info.json');
+	private async getCompanyInfoFilePath(): Promise<URI> {
+		const tneContextPath = await this.getTNEContextPath();
+		return joinPath(tneContextPath, 'company-info.json');
 	}
 
 	private async loadCompanyInfo(): Promise<void> {
-		const filePath = this.getCompanyInfoFilePath();
+		const filePath = await this.getCompanyInfoFilePath(); // Await the async call
 		try {
 			const content = await this.fileService.readFile(filePath);
 			this.companyInfo = JSON.parse(content.value.toString());
 			this.companyNameInput.value = this.companyInfo.name;
 			this.industryInput.value = this.companyInfo.industry;
+
+			// Display as headers if info exists
+			this.companyNameDisplay.textContent = this.companyInfo.name;
+			this.industryDisplay.textContent = this.companyInfo.industry;
+			this.toggleEditMode('name', false);
+			this.toggleEditMode('industry', false);
+
 		} catch (error) {
 			if (error.fileOperationResult === 1 /* FileOperationResult.FILE_NOT_FOUND */) {
-				this.notificationService.info(localize('ceo.companyInfo.notFound', "company-info.json not found. Please enter company details."));
+				this.notificationService.info(localize('ceo.companyInfo.notFound', "company-info.json not found in TNE-CONTEXT. Please enter company details."));
 				this.companyInfo = { name: '', industry: '' };
 				this.companyNameInput.value = '';
 				this.industryInput.value = '';
+
+				// Show inputs if no info found
+				this.toggleEditMode('name', true);
+				this.toggleEditMode('industry', true);
 			} else {
 				this.notificationService.error(localize('ceo.companyInfo.loadError', "Failed to load company-info.json: {0}", error.message));
 			}
@@ -2305,18 +2247,49 @@ class CEOView extends ViewPane {
 	private async saveCompanyInfo(): Promise<void> {
 		this.companyInfo.name = this.companyNameInput.value.trim();
 		this.companyInfo.industry = this.industryInput.value.trim();
-		const filePath = this.getCompanyInfoFilePath();
+		const filePath = await this.getCompanyInfoFilePath(); // Await the async call
 		try {
 			await this.fileService.writeFile(filePath, VSBuffer.fromString(JSON.stringify(this.companyInfo, null, 2)));
-			this.notificationService.info(localize('ceo.companyInfo.saveSuccess', "Company info saved."));
+			this.notificationService.info(localize('ceo.companyInfo.saveSuccess', "Company info saved to TNE-CONTEXT/company-info.json."));
+
+			// Update display after saving
+			this.companyNameDisplay.textContent = this.companyInfo.name;
+			this.industryDisplay.textContent = this.companyInfo.industry;
+			this.toggleEditMode('name', false);
+			this.toggleEditMode('industry', false);
 		} catch (error) {
 			this.notificationService.error(localize('ceo.companyInfo.saveError', "Failed to save company-info.json: {0}", error.message));
 		}
 	}
 
+	private toggleEditMode(field: 'name' | 'industry', enable: boolean): void {
+		if (field === 'name') {
+			if (enable) {
+				this.companyNameDisplay.classList.add('ceo-hidden');
+				this.companyNameInput.classList.remove('ceo-hidden');
+				this.companyNameInput.focus();
+			} else {
+				this.companyNameDisplay.classList.remove('ceo-hidden');
+				this.companyNameInput.classList.add('ceo-hidden');
+			}
+		} else if (field === 'industry') {
+			if (enable) {
+				this.industryDisplay.classList.add('ceo-hidden');
+				this.industryInput.classList.remove('ceo-hidden');
+				this.industryInput.focus();
+			} else {
+				this.industryDisplay.classList.remove('ceo-hidden');
+				this.industryInput.classList.add('ceo-hidden');
+			}
+		}
+	}
+
 	private async updateReportChecklist(): Promise<void> {
-		this.reportChecklist.innerHTML = ''; // Clear existing checklist
-		const tneContextPath = this.getTNEContextPath();
+		// Clear existing checklist items safely
+		while (this.reportChecklist.firstChild) {
+			this.reportChecklist.removeChild(this.reportChecklist.firstChild);
+		}
+		const tneContextPath = await this.getTNEContextPath(); // Await the async call
 		const reports = [
 			'b1-strategic-facts.md',
 			'b2-disruption-recos.md',
@@ -2330,38 +2303,74 @@ class CEOView extends ViewPane {
 			const listItem = document.createElement('div');
 			listItem.className = 'ceo-report-item';
 
-			const checkbox = document.createElement('input');
-			checkbox.type = 'checkbox';
-			checkbox.id = `report-${report}`;
-			checkbox.disabled = true; // Checkboxes are read-only
+			const statusIndicator = document.createElement('span');
+			statusIndicator.className = 'status-indicator';
 
 			const label = document.createElement('label');
-			label.htmlFor = checkbox.id;
 			label.textContent = report;
 
 			try {
 				const reportUri = joinPath(tneContextPath, report);
 				await this.fileService.resolve(reportUri);
-				checkbox.checked = true;
+				statusIndicator.classList.add('checked');
 				label.classList.add('checked');
 			} catch (error) {
-				checkbox.checked = false;
+				statusIndicator.classList.add('unchecked');
 				label.classList.add('unchecked');
 			}
 
-			listItem.appendChild(checkbox);
+			listItem.appendChild(statusIndicator);
 			listItem.appendChild(label);
+			listItem.addEventListener('click', () => this.handleReportClick(report, statusIndicator.classList.contains('checked')));
 			this.reportChecklist.appendChild(listItem);
 		}
 	}
 
-	private getTNEContextPath(): URI {
-		const workspaceFolders = this.workspaceContextService.getWorkspace().folders;
-		if (workspaceFolders.length > 0) {
-			return joinPath(workspaceFolders[0].uri, 'TNE-CONTEXT');
+	private async handleReportClick(report: string, isCompleted: boolean): Promise<void> {
+		if (isCompleted) {
+			// Open the file in the editor
+			const tneContextPath = await this.getTNEContextPath();
+			const reportUri = joinPath(tneContextPath, report);
+			try {
+				await this.commandService.executeCommand('vscode.open', reportUri);
+				this.notificationService.info(localize('ceo.report.opened', "Opened report: {0}", report));
+			} catch (error) {
+				this.notificationService.error(localize('ceo.report.openError', "Failed to open report {0}: {1}", report, error.message));
+			}
+		} else {
+			// Trigger a Compass message "Begin analysis"
+			try {
+				await this.commandService.executeCommand('compass.service.startTask', { message: `Begin analysis for ${report}`, newTask: true });
+				this.notificationService.info(localize('ceo.report.analysisTriggered', "Triggered analysis for report: {0}", report));
+			} catch (error) {
+				this.notificationService.error(localize('ceo.report.analysisError', "Failed to trigger analysis for report {0}: {1}", report, error.message));
+			}
 		}
-		// Fallback to a default path if no workspace is open
-		return URI.file('/tmp/TNE-CONTEXT');
+	}
+
+	private async getTNEContextPath(): Promise<URI> {
+		const workspaceFolders = this.workspaceContextService.getWorkspace().folders;
+		let tneContextUri: URI;
+
+		if (workspaceFolders.length > 0) {
+			tneContextUri = joinPath(workspaceFolders[0].uri, 'TNE-CONTEXT');
+		} else {
+			// Fallback to a default path if no workspace is open
+			tneContextUri = URI.file('/tmp/TNE-CONTEXT');
+		}
+
+		try {
+			await this.fileService.resolve(tneContextUri);
+		} catch (error) {
+			// If TNE-CONTEXT directory not found, create it
+			if (error.fileOperationResult === 1 /* FileOperationResult.FILE_NOT_FOUND */) {
+				await this.fileService.createFolder(tneContextUri);
+				this.notificationService.info(localize('ceo.tneContext.created', "TNE-CONTEXT directory created."));
+			} else {
+				this.notificationService.error(localize('ceo.tneContext.error', "Error resolving/creating TNE-CONTEXT directory: {0}", error.message));
+			}
+		}
+		return tneContextUri;
 	}
 
 	// Override shouldShowWelcome to ensure our custom content is always shown
@@ -2369,32 +2378,6 @@ class CEOView extends ViewPane {
 		return false;
 	}
 
-	private async send() {
-		const text = (this.input.value ?? '').trim();
-		if (!text) {
-			this.notificationService.warn(localize('ceo.empty', "Enter a message to send."));
-			return;
-		}
-		const newTask = this.newTaskToggle?.checked ?? true;
-		const length = text.length;
-
-		// Disable while sending
-		this.sendBtn.disabled = true;
-		try {
-			// Use Compass extension command to send message with explicit newTask toggle
-			await this.commandService.executeCommand('compass.service.startTask', { message: text, newTask });
-			this.input.value = '';
-			this.notificationService.info(localize('ceo.send.success', "Message sent to Compass"));
-			this.telemetryService.publicLog('compassCeoSend', { outcome: 'success', newTask, length });
-		} catch (err) {
-			const msg = err instanceof Error ? err.message : String(err);
-			this.notificationService.error(localize('ceo.send.error', "Failed to send: {0}", msg));
-			this.telemetryService.publicLog('compassCeoSend', { outcome: 'error', newTask, length, message: msg });
-		} finally {
-			// Recompute disabled state after send
-			this.sendBtn.disabled = (this.input.value.trim().length === 0);
-		}
-	}
 }
 
 // Register CEO container in the primary Side Bar

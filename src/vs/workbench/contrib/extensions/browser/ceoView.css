@@ -18,6 +18,31 @@
     color: var(--vscode-editor-foreground);
 }
 
+/* Company Info Display as Headers */
+.ceo-company-name-display {
+    font-size: 1.5em; /* H1 size */
+    margin: 0;
+    padding: 0;
+    color: var(--vscode-foreground);
+    cursor: pointer;
+}
+
+.ceo-industry-display {
+    font-size: 1.2em; /* H2 size */
+    margin: 0;
+    padding: 0;
+    color: var(--vscode-foreground);
+    cursor: pointer;
+}
+
+.ceo-info-label {
+    font-size: 0.9em;
+    font-weight: bold;
+    margin-top: 10px;
+    margin-bottom: 2px;
+    color: var(--vscode-editor-foreground);
+}
+
 .ceo-company-info-section label {
     font-size: 0.9em;
     margin-bottom: 4px;
@@ -53,26 +78,52 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
+    min-height: 50px; /* Ensure visibility even when empty */
+    border: 1px dashed var(--vscode-editorGroup-border); /* Optional: visual cue for empty state */
+    padding: 8px;
+    border-radius: 3px;
 }
 
 .ceo-report-item {
     display: flex;
-    align-items: center;
+    align-items: flex-start; /* Align items to the start for multi-line text */
     font-size: 0.9em;
+    margin-bottom: 4px; /* Add some spacing between items */
 }
 
-.ceo-report-item input[type="checkbox"] {
+.ceo-report-item .status-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
     margin-right: 8px;
-    accent-color: var(--vscode-button-background); /* Use a theme-consistent color */
+    margin-top: 7px; /* Align with the first line of text */
+    flex-shrink: 0;
+}
+
+.ceo-report-item .status-indicator.checked {
+    background: var(--vscode-charts-green); /* Green for existing/completed */
+}
+
+.ceo-report-item .status-indicator.unchecked {
+    border: 1px solid var(--vscode-descriptionForeground); /* Hollow for missing/pending */
+    background: transparent;
+}
+
+.ceo-report-item label {
+    color: var(--vscode-foreground);
+    word-break: break-word; /* Allow long report names to wrap */
 }
 
 .ceo-report-item label.checked {
     color: var(--vscode-gitDecoration-addedResourceForeground); /* Greenish for existing */
+    text-decoration: line-through;
+    opacity: 0.8;
 }
 
 .ceo-report-item label.unchecked {
     color: var(--vscode-editor-warningForeground); /* Yellowish for missing */
-    opacity: 0.7;
+    opacity: 0.9;
 }
 
 .ceo-separator {
@@ -138,4 +189,8 @@
 .ceo-controls input[type="checkbox"] {
     margin-right: 5px;
     accent-color: var(--vscode-button-background);
+}
+
+.ceo-hidden {
+    display: none;
 }
