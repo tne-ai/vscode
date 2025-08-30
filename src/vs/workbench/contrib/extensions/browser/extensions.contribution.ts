@@ -29,7 +29,7 @@ import { KeymapExtensions } from '../common/extensionsUtils.js';
 import { areSameExtensions, getIdAndVersion } from '../../../../platform/extensionManagement/common/extensionManagementUtil.js';
 import { EditorPaneDescriptor, IEditorPaneRegistry } from '../../../browser/editor.js';
 import { LifecyclePhase } from '../../../services/lifecycle/common/lifecycle.js';
-import { UriComponents } from '../../../../base/common/uri.js';
+import { UriComponents, URI } from '../../../../base/common/uri.js';
 import { ExtensionActivationProgress } from './extensionsActivationProgress.js';
 import { onUnexpectedError } from '../../../../base/common/errors.js';
 import { ExtensionDependencyChecker } from './extensionsDependencyChecker.js';
@@ -96,10 +96,8 @@ import { IOpenerService } from '../../../../platform/opener/common/opener.js';
 import { IThemeService } from '../../../../platform/theme/common/themeService.js';
 import { IHoverService } from '../../../../platform/hover/browser/hover.js';
 import { Codicon } from '../../../../base/common/codicons.js';
-import { ITelemetryService } from '../../../../platform/telemetry/common/telemetry.js';
 import { IFileService } from '../../../../platform/files/common/files.js';
 import { IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
-import { URI } from '../../../../base/common/uri.js';
 import { joinPath } from '../../../../base/common/resources.js';
 import { VSBuffer } from '../../../../base/common/buffer.js';
 
@@ -1838,7 +1836,7 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 			menu: {
 				id: MenuId.CommandPalette,
 				when: ContextKeyExpr.and(WorkbenchStateContext.isEqualTo('folder'),
-				ContextKeyExpr.equals('resourceScheme', Schemas.extension)),
+					ContextKeyExpr.equals('resourceScheme', Schemas.extension)),
 			},
 			run: () => this.commandService.executeCommand('workbench.extensions.action.addToWorkspaceRecommendations')
 		});
@@ -2081,12 +2079,12 @@ interface CompanyInfo {
 class CEOView extends ViewPane {
 	static readonly ID = CEO_VIEW_ID;
 
-	private input!: HTMLTextAreaElement;
-	private sendBtn!: HTMLButtonElement;
-	private newTaskToggle!: HTMLInputElement;
 	private companyNameInput!: HTMLInputElement;
 	private industryInput!: HTMLInputElement;
 	private reportChecklist!: HTMLElement;
+	private contentContainer!: HTMLElement; // Declare contentContainer as a class member
+	private companyNameDisplay!: HTMLElement; // For displaying company name as header
+	private industryDisplay!: HTMLElement; // For displaying industry as header
 
 	private companyInfo: CompanyInfo = { name: '', industry: '' };
 
@@ -2103,12 +2101,11 @@ class CEOView extends ViewPane {
 		@IHoverService hoverService: IHoverService,
 		@ICommandService private readonly commandService: ICommandService,
 		@INotificationService private readonly notificationService: INotificationService,
-		@ITelemetryService private readonly telemetryService: ITelemetryService,
 		@IFileService private readonly fileService: IFileService,
 		@IWorkspaceContextService private readonly workspaceContextService: IWorkspaceContextService,
 	) {
 		super(
-			{ ...options, titleMenuId: MenuId.ViewTitle, singleViewPaneContainerTitle: 'CEO Analysis' },
+			{ ...options, titleMenuId: MenuId.ViewTitle, singleViewPaneContainerTitle: 'CEO View' },
 			keybindingService,
 			contextMenuService,
 			configurationService,
@@ -2122,45 +2119,70 @@ class CEOView extends ViewPane {
 		this._register(this.onDidChangeBodyVisibility(() => this.onBodyVisibilityChange()));
 	}
 
-	protected override renderBody(container: HTMLElement): void {
-		super.renderBody(container);
+	protected override renderBody(parent: HTMLElement): void {
+		super.renderBody(parent);
 
-		const contentContainer = document.createElement('div');
-		contentContainer.className = 'ceo-view-content';
-		container.appendChild(contentContainer);
+		if (!this.contentContainer) {
+			this.contentContainer = document.createElement('div');
+			this.contentContainer.className = 'ceo-view-content';
+			parent.appendChild(this.contentContainer);
+		} else {
+			// Clear existing content to prevent duplication on re-render
+			while (this.contentContainer.firstChild) {
+				this.contentContainer.removeChild(this.contentContainer.firstChild);
+			}
+		}
 
 		// Company Info Section
 		const companyInfoSection = document.createElement('div');
 		companyInfoSection.className = 'ceo-company-info-section';
-		contentContainer.appendChild(companyInfoSection);
+		this.contentContainer.appendChild(companyInfoSection);
 
-		const companyNameLabel = document.createElement('label');
-		companyNameLabel.textContent = localize('ceo.companyName', "Company Name:");
-		companyInfoSection.appendChild(companyNameLabel);
+		// Add "Company" label
+		const companyLabel = document.createElement('label');
+		companyLabel.textContent = localize('ceo.companyLabel', "Company");
+		companyLabel.className = 'ceo-info-label';
+		companyInfoSection.appendChild(companyLabel);
+
+		this.companyNameDisplay = document.createElement('h1');
+		this.companyNameDisplay.className = 'ceo-company-name-display';
+		this.companyNameDisplay.addEventListener('dblclick', () => this.toggleEditMode('name', true));
+		companyInfoSection.appendChild(this.companyNameDisplay);
+
 		this.companyNameInput = document.createElement('input');
 		this.companyNameInput.type = 'text';
 		this.companyNameInput.placeholder = localize('ceo.companyNamePlaceholder', "Enter company name");
-		this.companyNameInput.className = 'ceo-input';
+		this.companyNameInput.className = 'ceo-input ceo-hidden'; // Hidden by default
 		this.companyNameInput.addEventListener('change', () => this.saveCompanyInfo());
+		this.companyNameInput.addEventListener('blur', () => this.toggleEditMode('name', false)); // Exit edit mode on blur
 		companyInfoSection.appendChild(this.companyNameInput);
 
+		// Add "Industry" label
 		const industryLabel = document.createElement('label');
-		industryLabel.textContent = localize('ceo.industry', "Industry:");
+		industryLabel.textContent = localize('ceo.industryLabel', "Industry");
+		industryLabel.className = 'ceo-info-label';
 		companyInfoSection.appendChild(industryLabel);
+
+		this.industryDisplay = document.createElement('h2');
+		this.industryDisplay.className = 'ceo-industry-display';
+		this.industryDisplay.addEventListener('dblclick', () => this.toggleEditMode('industry', true));
+		companyInfoSection.appendChild(this.industryDisplay);
+
 		this.industryInput = document.createElement('input');
 		this.industryInput.type = 'text';
 		this.industryInput.placeholder = localize('ceo.industryPlaceholder', "Enter industry");
-		this.industryInput.className = 'ceo-input';
+		this.industryInput.className = 'ceo-input ceo-hidden'; // Hidden by default
 		this.industryInput.addEventListener('change', () => this.saveCompanyInfo());
+		this.industryInput.addEventListener('blur', () => this.toggleEditMode('industry', false)); // Exit edit mode on blur
 		companyInfoSection.appendChild(this.industryInput);
 
 		// Reports Checklist Section
 		const reportsSection = document.createElement('div');
 		reportsSection.className = 'ceo-reports-section';
-		contentContainer.appendChild(reportsSection);
+		this.contentContainer.appendChild(reportsSection);
 
 		const reportsTitle = document.createElement('div');
-		reportsTitle.textContent = localize('ceo.reportsTitle', "TNE-CONTEXT Reports:");
+		reportsTitle.textContent = localize('ceo.reportsTitle', "Status"); // Changed title
 		reportsTitle.className = 'ceo-section-title';
 		reportsSection.appendChild(reportsTitle);
 
@@ -2168,102 +2190,10 @@ class CEOView extends ViewPane {
 		this.reportChecklist.className = 'ceo-report-checklist';
 		reportsSection.appendChild(this.reportChecklist);
 
-		// Separator
-		const separator = document.createElement('hr');
-		separator.className = 'ceo-separator';
-		contentContainer.appendChild(separator);
 
-		// Original Input and Controls
-		this.input = document.createElement('textarea');
-		this.input.rows = 6;
-		this.input.placeholder = localize('ceo.placeholder', "Type a message for Compass…");
-		this.input.title = localize('ceo.kb.hint', "Tip: Press Cmd/Ctrl+Enter to send");
-		this.input.maxLength = 4000;
-		this.input.className = 'ceo-textarea';
-		this.input.addEventListener('keydown', (e: KeyboardEvent) => {
-			if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-				e.preventDefault();
-				this.send();
-			}
-		});
-		contentContainer.appendChild(this.input);
+		// Removed: Original Input and Controls (textarea, send button, new task toggle)
 
-		const controls = document.createElement('div');
-		controls.className = 'ceo-controls';
-
-		// Start new task toggle
-		this.newTaskToggle = document.createElement('input');
-		this.newTaskToggle.type = 'checkbox';
-		this.newTaskToggle.checked = true;
-		this.newTaskToggle.id = 'ceo-new-task-toggle';
-		this.newTaskToggle.title = localize('ceo.newtask.hint', "When checked, starts a new Compass task. Uncheck to send to the current thread.");
-		const newTaskLabel = document.createElement('label');
-		newTaskLabel.htmlFor = this.newTaskToggle.id;
-		newTaskLabel.textContent = localize('ceo.newtask', "Start new task");
-
-		const leftGroup = document.createElement('div');
-		leftGroup.style.display = 'flex';
-		leftGroup.style.alignItems = 'center';
-		leftGroup.style.gap = '6px';
-		leftGroup.appendChild(this.newTaskToggle);
-		leftGroup.appendChild(newTaskLabel);
-		controls.appendChild(leftGroup);
-
-		// Send button
-		this.sendBtn = document.createElement('button');
-		this.sendBtn.type = 'button';
-		this.sendBtn.textContent = localize('ceo.send', "Send to Compass");
-		this.sendBtn.title = localize('ceo.kb.hint.btn', "Cmd/Ctrl+Enter to send");
-		this.sendBtn.addEventListener('click', () => this.send());
-		controls.appendChild(this.sendBtn);
-
-		// Disable send when input is empty/whitespace
-		const updateDisabled = () => {
-			this.sendBtn.disabled = (this.input.value.trim().length === 0);
-		};
-		this.input.addEventListener('input', updateDisabled);
-		updateDisabled();
-
-		controls.style.display = 'flex';
-		controls.style.alignItems = 'center';
-		controls.style.gap = '8px';
-
-		// Start new task toggle
-		this.newTaskToggle = document.createElement('input');
-		this.newTaskToggle.type = 'checkbox';
-		this.newTaskToggle.checked = true;
-		this.newTaskToggle.id = 'ceo-new-task-toggle';
-		this.newTaskToggle.title = localize('ceo.newtask.hint', "When checked, starts a new Compass task. Uncheck to send to the current thread.");
-		const newTaskLabelElement = document.createElement('label');
-		newTaskLabelElement.htmlFor = this.newTaskToggle.id;
-		newTaskLabelElement.textContent = localize('ceo.newtask', "Start new task");
-
-		const leftGroupElement = document.createElement('div');
-		leftGroupElement.style.display = 'flex';
-		leftGroupElement.style.alignItems = 'center';
-		leftGroupElement.style.gap = '6px';
-		leftGroupElement.appendChild(this.newTaskToggle);
-		leftGroupElement.appendChild(newTaskLabelElement);
-		controls.appendChild(leftGroupElement);
-
-		// Send button
-		this.sendBtn = document.createElement('button');
-		this.sendBtn.type = 'button';
-		this.sendBtn.textContent = localize('ceo.send', "Send to Compass");
-		this.sendBtn.title = localize('ceo.kb.hint.btn', "Cmd/Ctrl+Enter to send");
-		this.sendBtn.className = 'ceo-send-button';
-		this.sendBtn.addEventListener('click', () => this.send());
-		controls.appendChild(this.sendBtn);
-
-		// Disable send when input is empty/whitespace
-		const updateDisabledState = () => {
-			this.sendBtn.disabled = (this.input.value.trim().length === 0);
-		};
-		this.input.addEventListener('input', updateDisabledState);
-		updateDisabledState();
-
-		contentContainer.appendChild(controls);
-		this.loadCompanyInfo();
+		this.loadCompanyInfo(); // This will now handle rendering headers or inputs
 		this.updateReportChecklist();
 	}
 
@@ -2274,28 +2204,35 @@ class CEOView extends ViewPane {
 		}
 	}
 
-	private getCompanyInfoFilePath(): URI {
-		const workspaceFolders = this.workspaceContextService.getWorkspace().folders;
-		if (workspaceFolders.length > 0) {
-			return joinPath(workspaceFolders[0].uri, 'company-info.json');
-		}
-		// Fallback to a default path if no workspace is open
-		return URI.file('/tmp/company-info.json');
+	private async getCompanyInfoFilePath(): Promise<URI> {
+		const tneContextPath = await this.getTNEContextPath();
+		return joinPath(tneContextPath, 'company-info.json');
 	}
 
 	private async loadCompanyInfo(): Promise<void> {
-		const filePath = this.getCompanyInfoFilePath();
+		const filePath = await this.getCompanyInfoFilePath(); // Await the async call
 		try {
 			const content = await this.fileService.readFile(filePath);
 			this.companyInfo = JSON.parse(content.value.toString());
 			this.companyNameInput.value = this.companyInfo.name;
 			this.industryInput.value = this.companyInfo.industry;
+
+			// Display as headers if info exists
+			this.companyNameDisplay.textContent = this.companyInfo.name;
+			this.industryDisplay.textContent = this.companyInfo.industry;
+			this.toggleEditMode('name', false);
+			this.toggleEditMode('industry', false);
+
 		} catch (error) {
 			if (error.fileOperationResult === 1 /* FileOperationResult.FILE_NOT_FOUND */) {
-				this.notificationService.info(localize('ceo.companyInfo.notFound', "company-info.json not found. Please enter company details."));
+				this.notificationService.info(localize('ceo.companyInfo.notFound', "company-info.json not found in TNE-CONTEXT. Please enter company details."));
 				this.companyInfo = { name: '', industry: '' };
 				this.companyNameInput.value = '';
 				this.industryInput.value = '';
+
+				// Show inputs if no info found
+				this.toggleEditMode('name', true);
+				this.toggleEditMode('industry', true);
 			} else {
 				this.notificationService.error(localize('ceo.companyInfo.loadError', "Failed to load company-info.json: {0}", error.message));
 			}
@@ -2305,18 +2242,49 @@ class CEOView extends ViewPane {
 	private async saveCompanyInfo(): Promise<void> {
 		this.companyInfo.name = this.companyNameInput.value.trim();
 		this.companyInfo.industry = this.industryInput.value.trim();
-		const filePath = this.getCompanyInfoFilePath();
+		const filePath = await this.getCompanyInfoFilePath(); // Await the async call
 		try {
 			await this.fileService.writeFile(filePath, VSBuffer.fromString(JSON.stringify(this.companyInfo, null, 2)));
-			this.notificationService.info(localize('ceo.companyInfo.saveSuccess', "Company info saved."));
+			this.notificationService.info(localize('ceo.companyInfo.saveSuccess', "Company info saved to TNE-CONTEXT/company-info.json."));
+
+			// Update display after saving
+			this.companyNameDisplay.textContent = this.companyInfo.name;
+			this.industryDisplay.textContent = this.companyInfo.industry;
+			this.toggleEditMode('name', false);
+			this.toggleEditMode('industry', false);
 		} catch (error) {
 			this.notificationService.error(localize('ceo.companyInfo.saveError', "Failed to save company-info.json: {0}", error.message));
 		}
 	}
 
+	private toggleEditMode(field: 'name' | 'industry', enable: boolean): void {
+		if (field === 'name') {
+			if (enable) {
+				this.companyNameDisplay.classList.add('ceo-hidden');
+				this.companyNameInput.classList.remove('ceo-hidden');
+				this.companyNameInput.focus();
+			} else {
+				this.companyNameDisplay.classList.remove('ceo-hidden');
+				this.companyNameInput.classList.add('ceo-hidden');
+			}
+		} else if (field === 'industry') {
+			if (enable) {
+				this.industryDisplay.classList.add('ceo-hidden');
+				this.industryInput.classList.remove('ceo-hidden');
+				this.industryInput.focus();
+			} else {
+				this.industryDisplay.classList.remove('ceo-hidden');
+				this.industryInput.classList.add('ceo-hidden');
+			}
+		}
+	}
+
 	private async updateReportChecklist(): Promise<void> {
-		this.reportChecklist.innerHTML = ''; // Clear existing checklist
-		const tneContextPath = this.getTNEContextPath();
+		// Clear existing checklist items safely
+		while (this.reportChecklist.firstChild) {
+			this.reportChecklist.removeChild(this.reportChecklist.firstChild);
+		}
+		const tneContextPath = await this.getTNEContextPath(); // Await the async call
 		const reports = [
 			'b1-strategic-facts.md',
 			'b2-disruption-recos.md',
@@ -2330,38 +2298,105 @@ class CEOView extends ViewPane {
 			const listItem = document.createElement('div');
 			listItem.className = 'ceo-report-item';
 
-			const checkbox = document.createElement('input');
-			checkbox.type = 'checkbox';
-			checkbox.id = `report-${report}`;
-			checkbox.disabled = true; // Checkboxes are read-only
+			const statusIndicator = document.createElement('span');
+			statusIndicator.className = 'status-indicator';
 
 			const label = document.createElement('label');
-			label.htmlFor = checkbox.id;
-			label.textContent = report;
+			const displayReportName = report
+				.replace(/b\d-/, '') // Remove 'bX-' prefix
+				.replace(/-/g, ' ')   // Replace dashes with spaces
+				.replace(/\.md$/, '') // Remove '.md' extension
+				.split(' ')           // Split into words
+				.map(word => word.charAt(0).toUpperCase() + word.slice(1)) // Capitalize each word
+				.join(' ');           // Join back with spaces
+			label.textContent = displayReportName;
 
 			try {
 				const reportUri = joinPath(tneContextPath, report);
 				await this.fileService.resolve(reportUri);
-				checkbox.checked = true;
+				statusIndicator.classList.add('checked');
 				label.classList.add('checked');
 			} catch (error) {
-				checkbox.checked = false;
+				statusIndicator.classList.add('unchecked');
 				label.classList.add('unchecked');
 			}
 
-			listItem.appendChild(checkbox);
+			listItem.appendChild(statusIndicator);
 			listItem.appendChild(label);
+			listItem.addEventListener('click', () => this.handleReportClick(report, statusIndicator.classList.contains('checked')));
 			this.reportChecklist.appendChild(listItem);
 		}
 	}
 
-	private getTNEContextPath(): URI {
-		const workspaceFolders = this.workspaceContextService.getWorkspace().folders;
-		if (workspaceFolders.length > 0) {
-			return joinPath(workspaceFolders[0].uri, 'TNE-CONTEXT');
+	private async handleReportClick(report: string, isCompleted: boolean): Promise<void> {
+		const reportToModeMap: { [key: string]: { slug: string; name: string } } = {
+			'b1-strategic-facts.md': { slug: 'b1-background-and-framework', name: 'Background and Framework' },
+			'b2-disruption-recos.md': { slug: 'b2-disruption-playbook', name: 'Disruption Playbook' },
+			'b3-strategic-decisions.md': { slug: 'b3-long-term-mission', name: 'Long-Term Mission' },
+			'b4-implementation-plan.md': { slug: 'b4-implementation-plan', name: 'Implementation Plan' },
+			'b5-partners.md': { slug: 'b5-synergy-with-another-company', name: 'Partner Strategy' },
+			'b6-workflow.md': { slug: 'b6-workflow-specification', name: 'Business Process' },
+		};
+
+		if (isCompleted) {
+			// Open the file in the editor
+			const tneContextPath = await this.getTNEContextPath();
+			const reportUri = joinPath(tneContextPath, report);
+			try {
+				await this.commandService.executeCommand('vscode.open', reportUri);
+				this.notificationService.info(localize('ceo.report.opened', "Opened report: {0}", report));
+			} catch (error) {
+				this.notificationService.error(localize('ceo.report.openError', "Failed to open report {0}: {1}", report, error.message));
+			}
+		} else {
+			// Trigger a Compass mode switch with detailed message
+			const modeInfo = reportToModeMap[report];
+			if (modeInfo) {
+				const companyName = this.companyInfo.name || 'the company';
+				const industry = this.companyInfo.industry || 'unspecified';
+				const message = localize(
+					'ceo.mode.switchMessage',
+					"The user is requesting a detailed analysis of {0} in the {1} industry. Switch to the {2} mode and begin.",
+					companyName,
+					industry,
+					modeInfo.name
+				);
+
+				try {
+					await this.commandService.executeCommand('compass.service.startTask', { message: message, newTask: false, mode: modeInfo.slug });
+					this.notificationService.info(localize('ceo.mode.switchTriggered', "Triggered mode switch to: {0}", modeInfo.name));
+				} catch (error) {
+					this.notificationService.error(localize('ceo.mode.switchError', "Failed to trigger mode switch to {0}: {1}", modeInfo.name, error.message));
+				}
+			} else {
+				this.notificationService.warn(localize('ceo.mode.noMapping', "No mode mapping found for report: {0}", report));
+			}
 		}
-		// Fallback to a default path if no workspace is open
-		return URI.file('/tmp/TNE-CONTEXT');
+	}
+
+	private async getTNEContextPath(): Promise<URI> {
+		const workspaceFolders = this.workspaceContextService.getWorkspace().folders;
+		let tneContextUri: URI;
+
+		if (workspaceFolders.length > 0) {
+			tneContextUri = joinPath(workspaceFolders[0].uri, 'TNE-CONTEXT');
+		} else {
+			// Fallback to a default path if no workspace is open
+			tneContextUri = URI.file('/tmp/TNE-CONTEXT');
+		}
+
+		try {
+			await this.fileService.resolve(tneContextUri);
+		} catch (error) {
+			// If TNE-CONTEXT directory not found, create it
+			if (error.fileOperationResult === 1 /* FileOperationResult.FILE_NOT_FOUND */) {
+				await this.fileService.createFolder(tneContextUri);
+				this.notificationService.info(localize('ceo.tneContext.created', "TNE-CONTEXT directory created."));
+			} else {
+				this.notificationService.error(localize('ceo.tneContext.error', "Error resolving/creating TNE-CONTEXT directory: {0}", error.message));
+			}
+		}
+		return tneContextUri;
 	}
 
 	// Override shouldShowWelcome to ensure our custom content is always shown
@@ -2369,32 +2404,6 @@ class CEOView extends ViewPane {
 		return false;
 	}
 
-	private async send() {
-		const text = (this.input.value ?? '').trim();
-		if (!text) {
-			this.notificationService.warn(localize('ceo.empty', "Enter a message to send."));
-			return;
-		}
-		const newTask = this.newTaskToggle?.checked ?? true;
-		const length = text.length;
-
-		// Disable while sending
-		this.sendBtn.disabled = true;
-		try {
-			// Use Compass extension command to send message with explicit newTask toggle
-			await this.commandService.executeCommand('compass.service.startTask', { message: text, newTask });
-			this.input.value = '';
-			this.notificationService.info(localize('ceo.send.success', "Message sent to Compass"));
-			this.telemetryService.publicLog('compassCeoSend', { outcome: 'success', newTask, length });
-		} catch (err) {
-			const msg = err instanceof Error ? err.message : String(err);
-			this.notificationService.error(localize('ceo.send.error', "Failed to send: {0}", msg));
-			this.telemetryService.publicLog('compassCeoSend', { outcome: 'error', newTask, length, message: msg });
-		} finally {
-			// Recompute disabled state after send
-			this.sendBtn.disabled = (this.input.value.trim().length === 0);
-		}
-	}
 }
 
 // Register CEO container in the primary Side Bar
@@ -2420,3 +2429,1807 @@ Registry.as<IViewsRegistry>(ViewExtensions.ViewsRegistry).registerViews([{
 	canToggleVisibility: true,
 	when: undefined,
 }], ceoViewContainer);
+
+
+
+
+// CIO View: Sidebar container and view wired to Compass
+const CIO_VIEW_CONTAINER_ID = 'workbench.view.cio';
+const CIO_VIEW_ID = 'workbench.view.cioView';
+
+interface CIOCompanyInfo {
+	name: string;
+	industry: string;
+}
+
+class CIOView extends ViewPane {
+	static readonly ID = CIO_VIEW_ID;
+
+	private companyNameInput!: HTMLInputElement;
+	private industryInput!: HTMLInputElement;
+	private reportChecklist!: HTMLElement;
+	private contentContainer!: HTMLElement;
+	private companyNameDisplay!: HTMLElement;
+	private industryDisplay!: HTMLElement;
+
+	private companyInfo: CIOCompanyInfo = { name: '', industry: '' };
+
+	constructor(
+		options: IViewPaneOptions,
+		@IKeybindingService keybindingService: IKeybindingService,
+		@IContextMenuService contextMenuService: IContextMenuService,
+		@IConfigurationService configurationService: IConfigurationService,
+		@IContextKeyService contextKeyService: IContextKeyService,
+		@IViewDescriptorService viewDescriptorService: IViewDescriptorService,
+		@IInstantiationService instantiationService: IInstantiationService,
+		@IOpenerService openerService: IOpenerService,
+		@IThemeService themeService: IThemeService,
+		@IHoverService hoverService: IHoverService,
+		@ICommandService private readonly commandService: ICommandService,
+		@INotificationService private readonly notificationService: INotificationService,
+		@IFileService private readonly fileService: IFileService,
+		@IWorkspaceContextService private readonly workspaceContextService: IWorkspaceContextService,
+	) {
+		super(
+			{ ...options, titleMenuId: MenuId.ViewTitle, singleViewPaneContainerTitle: 'CIO View' },
+			keybindingService,
+			contextMenuService,
+			configurationService,
+			contextKeyService,
+			viewDescriptorService,
+			instantiationService,
+			openerService,
+			themeService,
+			hoverService
+		);
+		this._register(this.onDidChangeBodyVisibility(() => this.onBodyVisibilityChange()));
+	}
+
+	protected override renderBody(parent: HTMLElement): void {
+		super.renderBody(parent);
+
+		if (!this.contentContainer) {
+			this.contentContainer = document.createElement('div');
+			this.contentContainer.className = 'ceo-view-content';
+			parent.appendChild(this.contentContainer);
+		} else {
+			while (this.contentContainer.firstChild) {
+				this.contentContainer.removeChild(this.contentContainer.firstChild);
+			}
+		}
+
+		const companyInfoSection = document.createElement('div');
+		companyInfoSection.className = 'ceo-company-info-section';
+		this.contentContainer.appendChild(companyInfoSection);
+
+		const companyLabel = document.createElement('label');
+		companyLabel.textContent = localize('cio.companyLabel', "Company");
+		companyLabel.className = 'ceo-info-label';
+		companyInfoSection.appendChild(companyLabel);
+
+		this.companyNameDisplay = document.createElement('h1');
+		this.companyNameDisplay.className = 'ceo-company-name-display';
+		this.companyNameDisplay.addEventListener('dblclick', () => this.toggleEditMode('name', true));
+		companyInfoSection.appendChild(this.companyNameDisplay);
+
+		this.companyNameInput = document.createElement('input');
+		this.companyNameInput.type = 'text';
+		this.companyNameInput.placeholder = localize('cio.companyNamePlaceholder', "Enter company name");
+		this.companyNameInput.className = 'ceo-input ceo-hidden';
+		this.companyNameInput.addEventListener('change', () => this.saveCompanyInfo());
+		this.companyNameInput.addEventListener('blur', () => this.toggleEditMode('name', false));
+		companyInfoSection.appendChild(this.companyNameInput);
+
+		const industryLabel = document.createElement('label');
+		industryLabel.textContent = localize('cio.industryLabel', "Industry");
+		industryLabel.className = 'ceo-info-label';
+		companyInfoSection.appendChild(industryLabel);
+
+		this.industryDisplay = document.createElement('h2');
+		this.industryDisplay.className = 'ceo-industry-display';
+		this.industryDisplay.addEventListener('dblclick', () => this.toggleEditMode('industry', true));
+		companyInfoSection.appendChild(this.industryDisplay);
+
+		this.industryInput = document.createElement('input');
+		this.industryInput.type = 'text';
+		this.industryInput.placeholder = localize('cio.industryPlaceholder', "Enter industry");
+		this.industryInput.className = 'ceo-input ceo-hidden';
+		this.industryInput.addEventListener('change', () => this.saveCompanyInfo());
+		this.industryInput.addEventListener('blur', () => this.toggleEditMode('industry', false));
+		companyInfoSection.appendChild(this.industryInput);
+
+		const reportsSection = document.createElement('div');
+		reportsSection.className = 'ceo-reports-section';
+		this.contentContainer.appendChild(reportsSection);
+
+		const reportsTitle = document.createElement('div');
+		reportsTitle.textContent = localize('cio.reportsTitle', "Status");
+		reportsTitle.className = 'ceo-section-title';
+		reportsSection.appendChild(reportsTitle);
+
+		this.reportChecklist = document.createElement('div');
+		this.reportChecklist.className = 'ceo-report-checklist';
+		reportsSection.appendChild(this.reportChecklist);
+
+		this.loadCompanyInfo();
+		this.updateReportChecklist();
+	}
+
+	private onBodyVisibilityChange(): void {
+		if (this.isBodyVisible()) {
+			this.loadCompanyInfo();
+			this.updateReportChecklist();
+		}
+	}
+
+	private async getCompanyInfoFilePath(): Promise<URI> {
+		const tneContextPath = await this.getTNEContextPath();
+		return joinPath(tneContextPath, 'company-info.json');
+	}
+
+	private async loadCompanyInfo(): Promise<void> {
+		const filePath = await this.getCompanyInfoFilePath();
+		try {
+			const content = await this.fileService.readFile(filePath);
+			this.companyInfo = JSON.parse(content.value.toString());
+			this.companyNameInput.value = this.companyInfo.name;
+			this.industryInput.value = this.companyInfo.industry;
+
+			this.companyNameDisplay.textContent = this.companyInfo.name;
+			this.industryDisplay.textContent = this.companyInfo.industry;
+			this.toggleEditMode('name', false);
+			this.toggleEditMode('industry', false);
+
+		} catch (error) {
+			if ((error as any).fileOperationResult === 1) {
+				this.notificationService.info(localize('cio.companyInfo.notFound', "company-info.json not found in TNE-CONTEXT. Please enter company details."));
+				this.companyInfo = { name: '', industry: '' };
+				this.companyNameInput.value = '';
+				this.industryInput.value = '';
+				this.toggleEditMode('name', true);
+				this.toggleEditMode('industry', true);
+			} else {
+				this.notificationService.error(localize('cio.companyInfo.loadError', "Failed to load company-info.json: {0}", (error as any).message));
+			}
+		}
+	}
+
+	private async saveCompanyInfo(): Promise<void> {
+		this.companyInfo.name = this.companyNameInput.value.trim();
+		this.companyInfo.industry = this.industryInput.value.trim();
+		const filePath = await this.getCompanyInfoFilePath();
+		try {
+			await this.fileService.writeFile(filePath, VSBuffer.fromString(JSON.stringify(this.companyInfo, null, 2)));
+			this.notificationService.info(localize('cio.companyInfo.saveSuccess', "Company info saved to TNE-CONTEXT/company-info.json."));
+			this.companyNameDisplay.textContent = this.companyInfo.name;
+			this.industryDisplay.textContent = this.companyInfo.industry;
+			this.toggleEditMode('name', false);
+			this.toggleEditMode('industry', false);
+		} catch (error) {
+			this.notificationService.error(localize('cio.companyInfo.saveError', "Failed to save company-info.json: {0}", (error as any).message));
+		}
+	}
+
+	private toggleEditMode(field: 'name' | 'industry', enable: boolean): void {
+		if (field === 'name') {
+			if (enable) {
+				this.companyNameDisplay.classList.add('ceo-hidden');
+				this.companyNameInput.classList.remove('ceo-hidden');
+				this.companyNameInput.focus();
+			} else {
+				this.companyNameDisplay.classList.remove('ceo-hidden');
+				this.companyNameInput.classList.add('ceo-hidden');
+			}
+		} else {
+			if (enable) {
+				this.industryDisplay.classList.add('ceo-hidden');
+				this.industryInput.classList.remove('ceo-hidden');
+				this.industryInput.focus();
+			} else {
+				this.industryDisplay.classList.remove('ceo-hidden');
+				this.industryInput.classList.add('ceo-hidden');
+			}
+		}
+	}
+
+	private async updateReportChecklist(): Promise<void> {
+		while (this.reportChecklist.firstChild) {
+			this.reportChecklist.removeChild(this.reportChecklist.firstChild);
+		}
+		const tneContextPath = await this.getTNEContextPath();
+		const reports = [
+			'i1-investment-analysis.md',
+			'i2-financial.md',
+			'i3-investment-memo.md'
+		];
+
+		for (const report of reports) {
+			const listItem = document.createElement('div');
+			listItem.className = 'ceo-report-item';
+
+			const statusIndicator = document.createElement('span');
+			statusIndicator.className = 'status-indicator';
+
+			const label = document.createElement('label');
+			const displayReportName = report
+				.replace(/i\d-/, '')
+				.replace(/-/g, ' ')
+				.replace(/\.md$/, '')
+				.split(' ')
+				.map(w => w.charAt(0).toUpperCase() + w.slice(1))
+				.join(' ');
+			label.textContent = displayReportName;
+
+			try {
+				const reportUri = joinPath(tneContextPath, report);
+				await this.fileService.resolve(reportUri);
+				statusIndicator.classList.add('checked');
+				label.classList.add('checked');
+			} catch {
+				statusIndicator.classList.add('unchecked');
+				label.classList.add('unchecked');
+			}
+
+			listItem.appendChild(statusIndicator);
+			listItem.appendChild(label);
+			listItem.addEventListener('click', () => this.handleReportClick(report, statusIndicator.classList.contains('checked')));
+			this.reportChecklist.appendChild(listItem);
+		}
+	}
+
+	private async handleReportClick(report: string, isCompleted: boolean): Promise<void> {
+		const reportToModeMap: { [key: string]: { slug: string; name: string } } = {
+			'i1-investment-analysis.md': { slug: 'i1-investment-analysis', name: 'Investment Analysis' },
+			'i2-financial.md': { slug: 'i2-financial', name: 'Financial' },
+			'i3-investment-memo.md': { slug: 'i3-investment-memo', name: 'Investment Memo' },
+		};
+
+		if (isCompleted) {
+			const tneContextPath = await this.getTNEContextPath();
+			const reportUri = joinPath(tneContextPath, report);
+			try {
+				await this.commandService.executeCommand('vscode.open', reportUri);
+				this.notificationService.info(localize('cio.report.opened', "Opened report: {0}", report));
+			} catch (error) {
+				this.notificationService.error(localize('cio.report.openError', "Failed to open report {0}: {1}", report, (error as any).message));
+			}
+		} else {
+			const modeInfo = reportToModeMap[report];
+			if (modeInfo) {
+				const companyName = this.companyInfo.name || 'the company';
+				const industry = this.companyInfo.industry || 'unspecified';
+				const message = localize('cio.mode.switchMessage',
+					"The user requests {0} for {1} in the {2} industry. Switch to the {0} mode and begin.",
+					modeInfo.name, companyName, industry);
+				try {
+					await this.commandService.executeCommand('compass.service.startTask', { message, newTask: false, mode: modeInfo.slug });
+					this.notificationService.info(localize('cio.mode.switchTriggered', "Triggered mode switch to: {0}", modeInfo.name));
+				} catch (error) {
+					this.notificationService.error(localize('cio.mode.switchError', "Failed to trigger mode switch to {0}: {1}", modeInfo.name, (error as any).message));
+				}
+			} else {
+				this.notificationService.warn(localize('cio.mode.noMapping', "No mode mapping found for report: {0}", report));
+			}
+		}
+	}
+
+	private async getTNEContextPath(): Promise<URI> {
+		const workspaceFolders = this.workspaceContextService.getWorkspace().folders;
+		let tneContextUri: URI;
+		if (workspaceFolders.length > 0) {
+			tneContextUri = joinPath(workspaceFolders[0].uri, 'TNE-CONTEXT');
+		} else {
+			tneContextUri = URI.file('/tmp/TNE-CONTEXT');
+		}
+		try {
+			await this.fileService.resolve(tneContextUri);
+		} catch (error) {
+			if ((error as any).fileOperationResult === 1) {
+				await this.fileService.createFolder(tneContextUri);
+				this.notificationService.info(localize('cio.tneContext.created', "TNE-CONTEXT directory created."));
+			} else {
+				this.notificationService.error(localize('cio.tneContext.error', "Error resolving/creating TNE-CONTEXT directory: {0}", (error as any).message));
+			}
+		}
+		return tneContextUri;
+	}
+
+	override shouldShowWelcome(): boolean { return false; }
+}
+
+// Register CIO container (after CSO order will follow as 4)
+const cioViewContainer = Registry.as<IViewContainersRegistry>(ViewExtensions.ViewContainersRegistry).registerViewContainer(
+	{
+		id: CIO_VIEW_CONTAINER_ID,
+		title: localize2('cio', 'CIO'),
+		ctorDescriptor: new SyncDescriptor(ViewPaneContainer, [CIO_VIEW_CONTAINER_ID, { mergeViewWithContainerWhenSingleView: true }]),
+		icon: Codicon.briefcase,
+		storageId: CIO_VIEW_CONTAINER_ID,
+		order: 4
+	},
+	ViewContainerLocation.Sidebar
+);
+Registry.as<IViewsRegistry>(ViewExtensions.ViewsRegistry).registerViews([{
+	id: CIO_VIEW_ID,
+	name: localize2('cio.view', 'CIO'),
+	containerIcon: Codicon.briefcase,
+	ctorDescriptor: new SyncDescriptor(CIOView),
+	canMoveView: true,
+	canToggleVisibility: true,
+	when: undefined,
+}], cioViewContainer);
+
+
+// Project Manager (PM) View
+const PM_VIEW_CONTAINER_ID = 'workbench.view.pm';
+const PM_VIEW_ID = 'workbench.view.pmView';
+
+class PMView extends ViewPane {
+	static readonly ID = PM_VIEW_ID;
+
+	private companyNameInput!: HTMLInputElement;
+	private industryInput!: HTMLInputElement;
+	private reportChecklist!: HTMLElement;
+	private contentContainer!: HTMLElement;
+	private companyNameDisplay!: HTMLElement;
+	private industryDisplay!: HTMLElement;
+
+	constructor(
+		options: IViewPaneOptions,
+		@IKeybindingService keybindingService: IKeybindingService,
+		@IContextMenuService contextMenuService: IContextMenuService,
+		@IConfigurationService configurationService: IConfigurationService,
+		@IContextKeyService contextKeyService: IContextKeyService,
+		@IViewDescriptorService viewDescriptorService: IViewDescriptorService,
+		@IInstantiationService instantiationService: IInstantiationService,
+		@IOpenerService openerService: IOpenerService,
+		@IThemeService themeService: IThemeService,
+		@IHoverService hoverService: IHoverService,
+		@ICommandService private readonly commandService: ICommandService,
+		@INotificationService private readonly notificationService: INotificationService,
+		@IFileService private readonly fileService: IFileService,
+		@IWorkspaceContextService private readonly workspaceContextService: IWorkspaceContextService,
+	) {
+		super(
+			{ ...options, titleMenuId: MenuId.ViewTitle, singleViewPaneContainerTitle: 'Project Manager' },
+			keybindingService, contextMenuService, configurationService, contextKeyService, viewDescriptorService,
+			instantiationService, openerService, themeService, hoverService
+		);
+	}
+
+	protected override renderBody(parent: HTMLElement): void {
+		super.renderBody(parent);
+		if (!this.contentContainer) {
+			this.contentContainer = document.createElement('div');
+			this.contentContainer.className = 'ceo-view-content';
+			parent.appendChild(this.contentContainer);
+		} else {
+			while (this.contentContainer.firstChild) { this.contentContainer.removeChild(this.contentContainer.firstChild); }
+		}
+
+		const companyInfoSection = document.createElement('div');
+		companyInfoSection.className = 'ceo-company-info-section';
+		this.contentContainer.appendChild(companyInfoSection);
+
+		const companyLabel = document.createElement('label');
+		companyLabel.textContent = localize('pm.companyLabel', "Company");
+		companyLabel.className = 'ceo-info-label';
+		companyInfoSection.appendChild(companyLabel);
+
+		this.companyNameDisplay = document.createElement('h1');
+		this.companyNameDisplay.className = 'ceo-company-name-display';
+		companyInfoSection.appendChild(this.companyNameDisplay);
+
+		this.companyNameInput = document.createElement('input');
+		this.companyNameInput.type = 'text';
+		this.companyNameInput.placeholder = localize('pm.companyNamePlaceholder', "Enter company name");
+		this.companyNameInput.className = 'ceo-input ceo-hidden';
+		companyInfoSection.appendChild(this.companyNameInput);
+
+		const industryLabel = document.createElement('label');
+		industryLabel.textContent = localize('pm.industryLabel', "Industry");
+		industryLabel.className = 'ceo-info-label';
+		companyInfoSection.appendChild(industryLabel);
+
+		this.industryDisplay = document.createElement('h2');
+		this.industryDisplay.className = 'ceo-industry-display';
+		companyInfoSection.appendChild(this.industryDisplay);
+
+		this.industryInput = document.createElement('input');
+		this.industryInput.type = 'text';
+		this.industryInput.placeholder = localize('pm.industryPlaceholder', "Enter industry");
+		this.industryInput.className = 'ceo-input ceo-hidden';
+		companyInfoSection.appendChild(this.industryInput);
+
+		const reportsSection = document.createElement('div');
+		reportsSection.className = 'ceo-reports-section';
+		this.contentContainer.appendChild(reportsSection);
+
+		const reportsTitle = document.createElement('div');
+		reportsTitle.textContent = localize('pm.reportsTitle', "Status");
+		reportsTitle.className = 'ceo-section-title';
+		reportsSection.appendChild(reportsTitle);
+
+		this.reportChecklist = document.createElement('div');
+		this.reportChecklist.className = 'ceo-report-checklist';
+		reportsSection.appendChild(this.reportChecklist);
+
+		this.updateReportChecklist();
+	}
+
+	private async getTNEContextPath(): Promise<URI> {
+		const workspaceFolders = this.workspaceContextService.getWorkspace().folders;
+		return workspaceFolders.length > 0 ? joinPath(workspaceFolders[0].uri, 'TNE-CONTEXT') : URI.file('/tmp/TNE-CONTEXT');
+	}
+
+	private async updateReportChecklist(): Promise<void> {
+		while (this.reportChecklist.firstChild) { this.reportChecklist.removeChild(this.reportChecklist.firstChild); }
+		const tneContextPath = await this.getTNEContextPath();
+		const reports = [
+			'a1-inspect-and-digest.md',
+			'a2-new-feature-research.md',
+			'a3-feature-recommendations.md',
+			'a4-feature-implementation-brief.md'
+		];
+
+		for (const report of reports) {
+			const listItem = document.createElement('div');
+			listItem.className = 'ceo-report-item';
+			const statusIndicator = document.createElement('span');
+			statusIndicator.className = 'status-indicator';
+			const label = document.createElement('label');
+			const displayReportName = report.replace(/a\d-/, '').replace(/-/g, ' ').replace(/\.md$/, '')
+				.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+			label.textContent = displayReportName;
+
+			try {
+				const reportUri = joinPath(tneContextPath, report);
+				await this.fileService.resolve(reportUri);
+				statusIndicator.classList.add('checked');
+				label.classList.add('checked');
+			} catch {
+				statusIndicator.classList.add('unchecked');
+				label.classList.add('unchecked');
+			}
+			listItem.appendChild(statusIndicator);
+			listItem.appendChild(label);
+			listItem.addEventListener('click', () => this.handleReportClick(report, statusIndicator.classList.contains('checked')));
+			this.reportChecklist.appendChild(listItem);
+		}
+	}
+
+	private async handleReportClick(report: string, isCompleted: boolean): Promise<void> {
+		const reportToModeMap: { [key: string]: { slug: string; name: string } } = {
+			'a1-inspect-and-digest.md': { slug: 'a1-inspect-and-digest', name: 'Inspect and Digest' },
+			'a2-new-feature-research.md': { slug: 'a2-new-feature-research', name: 'New Feature Research' },
+			'a3-feature-recommendations.md': { slug: 'a3-feature-recommendations', name: 'Feature Recommendations' },
+			'a4-feature-implementation-brief.md': { slug: 'a4-feature-implementation-brief', name: 'Feature Implementation Brief' },
+		};
+		if (isCompleted) {
+			const tneContextPath = await this.getTNEContextPath();
+			const reportUri = joinPath(tneContextPath, report);
+			try {
+				await this.commandService.executeCommand('vscode.open', reportUri);
+				this.notificationService.info(localize('pm.report.opened', "Opened report: {0}", report));
+			} catch (error) {
+				this.notificationService.error(localize('pm.report.openError', "Failed to open report {0}: {1}", report, (error as any).message));
+			}
+		} else {
+			const modeInfo = reportToModeMap[report];
+			if (modeInfo) {
+				const message = localize('pm.mode.switchMessage', "Begin: {0}", modeInfo.name);
+				try {
+					await this.commandService.executeCommand('compass.service.startTask', { message, newTask: false, mode: modeInfo.slug });
+					this.notificationService.info(localize('pm.mode.switchTriggered', "Triggered mode switch to: {0}", modeInfo.name));
+				} catch (error) {
+					this.notificationService.error(localize('pm.mode.switchError', "Failed to trigger mode switch: {0}", (error as any).message));
+				}
+			}
+		}
+	}
+}
+
+const pmViewContainer = Registry.as<IViewContainersRegistry>(ViewExtensions.ViewContainersRegistry).registerViewContainer(
+	{
+		id: PM_VIEW_CONTAINER_ID,
+		title: localize2('pm', 'Project Manager'),
+		ctorDescriptor: new SyncDescriptor(ViewPaneContainer, [PM_VIEW_CONTAINER_ID, { mergeViewWithContainerWhenSingleView: true }]),
+		icon: Codicon.tasklist,
+		storageId: PM_VIEW_CONTAINER_ID,
+		order: 5
+	},
+	ViewContainerLocation.Sidebar
+);
+Registry.as<IViewsRegistry>(ViewExtensions.ViewsRegistry).registerViews([{
+	id: PM_VIEW_ID,
+	name: localize2('pm.view', 'Project Manager'),
+	containerIcon: Codicon.tasklist,
+	ctorDescriptor: new SyncDescriptor(PMView),
+	canMoveView: true,
+	canToggleVisibility: true,
+	when: undefined,
+}], pmViewContainer);
+
+
+// Documentation (DOCS) View
+const DOCS_VIEW_CONTAINER_ID = 'workbench.view.docs';
+const DOCS_VIEW_ID = 'workbench.view.docsView';
+
+class DocsView extends ViewPane {
+	static readonly ID = DOCS_VIEW_ID;
+
+	private reportChecklist!: HTMLElement;
+	private contentContainer!: HTMLElement;
+
+	constructor(
+		options: IViewPaneOptions,
+		@IKeybindingService keybindingService: IKeybindingService,
+		@IContextMenuService contextMenuService: IContextMenuService,
+		@IConfigurationService configurationService: IConfigurationService,
+		@IContextKeyService contextKeyService: IContextKeyService,
+		@IViewDescriptorService viewDescriptorService: IViewDescriptorService,
+		@IInstantiationService instantiationService: IInstantiationService,
+		@IOpenerService openerService: IOpenerService,
+		@IThemeService themeService: IThemeService,
+		@IHoverService hoverService: IHoverService,
+		@ICommandService private readonly commandService: ICommandService,
+		@INotificationService private readonly notificationService: INotificationService,
+		@IFileService private readonly fileService: IFileService,
+		@IWorkspaceContextService private readonly workspaceContextService: IWorkspaceContextService,
+	) {
+		super(
+			{ ...options, titleMenuId: MenuId.ViewTitle, singleViewPaneContainerTitle: 'Documentation' },
+			keybindingService, contextMenuService, configurationService, contextKeyService, viewDescriptorService,
+			instantiationService, openerService, themeService, hoverService
+		);
+	}
+
+	protected override renderBody(parent: HTMLElement): void {
+		super.renderBody(parent);
+		if (!this.contentContainer) {
+			this.contentContainer = document.createElement('div');
+			this.contentContainer.className = 'ceo-view-content';
+			parent.appendChild(this.contentContainer);
+		} else {
+			while (this.contentContainer.firstChild) { this.contentContainer.removeChild(this.contentContainer.firstChild); }
+		}
+
+		const reportsSection = document.createElement('div');
+		reportsSection.className = 'ceo-reports-section';
+		this.contentContainer.appendChild(reportsSection);
+
+		const reportsTitle = document.createElement('div');
+		reportsTitle.textContent = localize('docs.reportsTitle', "Status");
+		reportsTitle.className = 'ceo-section-title';
+		reportsSection.appendChild(reportsTitle);
+
+		this.reportChecklist = document.createElement('div');
+		this.reportChecklist.className = 'ceo-report-checklist';
+		reportsSection.appendChild(this.reportChecklist);
+
+		this.updateReportChecklist();
+	}
+
+	private async getTNEContextPath(): Promise<URI> {
+		const workspaceFolders = this.workspaceContextService.getWorkspace().folders;
+		return workspaceFolders.length > 0 ? joinPath(workspaceFolders[0].uri, 'TNE-CONTEXT') : URI.file('/tmp/TNE-CONTEXT');
+	}
+
+	private async updateReportChecklist(): Promise<void> {
+		while (this.reportChecklist.firstChild) { this.reportChecklist.removeChild(this.reportChecklist.firstChild); }
+		const tneContextPath = await this.getTNEContextPath();
+		const reports = [
+			'e1-existing-code.md',
+			'e2-existing-data.md',
+			'e3-existing-technology.md',
+			'e4-existing-applications.md',
+			'e5-existing-standards.md'
+		];
+		for (const report of reports) {
+			const listItem = document.createElement('div');
+			listItem.className = 'ceo-report-item';
+			const statusIndicator = document.createElement('span');
+			statusIndicator.className = 'status-indicator';
+			const label = document.createElement('label');
+			const displayReportName = report.replace(/e\d-/, '').replace(/-/g, ' ').replace(/\.md$/, '')
+				.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+			label.textContent = displayReportName;
+
+			try {
+				const reportUri = joinPath(tneContextPath, report);
+				await this.fileService.resolve(reportUri);
+				statusIndicator.classList.add('checked');
+				label.classList.add('checked');
+			} catch {
+				statusIndicator.classList.add('unchecked');
+				label.classList.add('unchecked');
+			}
+			listItem.appendChild(statusIndicator);
+			listItem.appendChild(label);
+			listItem.addEventListener('click', () => this.handleReportClick(report, statusIndicator.classList.contains('checked')));
+			this.reportChecklist.appendChild(listItem);
+		}
+	}
+
+	private async handleReportClick(report: string, isCompleted: boolean): Promise<void> {
+		const reportToModeMap: { [key: string]: { slug: string; name: string } } = {
+			'e1-existing-code.md': { slug: 'e1-existing-code', name: 'Documentation: Existing Code' },
+			'e2-existing-data.md': { slug: 'e2-existing-data', name: 'Documentation: Existing Data' },
+			'e3-existing-technology.md': { slug: 'e3-existing-technology', name: 'Documentation: Existing Technology' },
+			'e4-existing-applications.md': { slug: 'E4-existing-applications', name: 'Documentation: Existing Apps' },
+			'e5-existing-standards.md': { slug: 'e5-existing-standards', name: 'Documentation: Existing Standards' },
+		};
+		if (isCompleted) {
+			const tneContextPath = await this.getTNEContextPath();
+			const reportUri = joinPath(tneContextPath, report);
+			try {
+				await this.commandService.executeCommand('vscode.open', reportUri);
+				this.notificationService.info(localize('docs.report.opened', "Opened report: {0}", report));
+			} catch (error) {
+				this.notificationService.error(localize('docs.report.openError', "Failed to open report {0}: {1}", report, (error as any).message));
+			}
+		} else {
+			const modeInfo = reportToModeMap[report];
+			if (modeInfo) {
+				const message = localize('docs.mode.switchMessage', "Begin: {0}", modeInfo.name);
+				try {
+					await this.commandService.executeCommand('compass.service.startTask', { message, newTask: false, mode: modeInfo.slug });
+					this.notificationService.info(localize('docs.mode.switchTriggered', "Triggered mode switch to: {0}", modeInfo.name));
+				} catch (error) {
+					this.notificationService.error(localize('docs.mode.switchError', "Failed to trigger mode switch: {0}", (error as any).message));
+				}
+			}
+		}
+	}
+}
+
+const docsViewContainer = Registry.as<IViewContainersRegistry>(ViewExtensions.ViewContainersRegistry).registerViewContainer(
+	{
+		id: DOCS_VIEW_CONTAINER_ID,
+		title: localize2('docs', 'Documentation'),
+		ctorDescriptor: new SyncDescriptor(ViewPaneContainer, [DOCS_VIEW_CONTAINER_ID, { mergeViewWithContainerWhenSingleView: true }]),
+		icon: Codicon.book,
+		storageId: DOCS_VIEW_CONTAINER_ID,
+		order: 6
+	},
+	ViewContainerLocation.Sidebar
+);
+Registry.as<IViewsRegistry>(ViewExtensions.ViewsRegistry).registerViews([{
+	id: DOCS_VIEW_ID,
+	name: localize2('docs.view', 'Documentation'),
+	containerIcon: Codicon.book,
+	ctorDescriptor: new SyncDescriptor(DocsView),
+	canMoveView: true,
+	canToggleVisibility: true,
+	when: undefined,
+}], docsViewContainer);
+
+
+// IP Agent (IP) View
+const IP_VIEW_CONTAINER_ID = 'workbench.view.ip';
+const IP_VIEW_ID = 'workbench.view.ipView';
+
+class IPView extends ViewPane {
+	static readonly ID = IP_VIEW_ID;
+
+	private reportChecklist!: HTMLElement;
+	private contentContainer!: HTMLElement;
+
+	constructor(
+		options: IViewPaneOptions,
+		@IKeybindingService keybindingService: IKeybindingService,
+		@IContextMenuService contextMenuService: IContextMenuService,
+		@IConfigurationService configurationService: IConfigurationService,
+		@IContextKeyService contextKeyService: IContextKeyService,
+		@IViewDescriptorService viewDescriptorService: IViewDescriptorService,
+		@IInstantiationService instantiationService: IInstantiationService,
+		@IOpenerService openerService: IOpenerService,
+		@IThemeService themeService: IThemeService,
+		@IHoverService hoverService: IHoverService,
+		@ICommandService private readonly commandService: ICommandService,
+		@INotificationService private readonly notificationService: INotificationService,
+		@IFileService private readonly fileService: IFileService,
+		@IWorkspaceContextService private readonly workspaceContextService: IWorkspaceContextService,
+	) {
+		super(
+			{ ...options, titleMenuId: MenuId.ViewTitle, singleViewPaneContainerTitle: 'IP Agent' },
+			keybindingService, contextMenuService, configurationService, contextKeyService, viewDescriptorService,
+			instantiationService, openerService, themeService, hoverService
+		);
+	}
+
+	protected override renderBody(parent: HTMLElement): void {
+		super.renderBody(parent);
+		if (!this.contentContainer) {
+			this.contentContainer = document.createElement('div');
+			this.contentContainer.className = 'ceo-view-content';
+			parent.appendChild(this.contentContainer);
+		} else {
+			while (this.contentContainer.firstChild) { this.contentContainer.removeChild(this.contentContainer.firstChild); }
+		}
+
+		const reportsSection = document.createElement('div');
+		reportsSection.className = 'ceo-reports-section';
+		this.contentContainer.appendChild(reportsSection);
+
+		const reportsTitle = document.createElement('div');
+		reportsTitle.textContent = localize('ip.reportsTitle', "Status");
+		reportsTitle.className = 'ceo-section-title';
+		reportsSection.appendChild(reportsTitle);
+
+		this.reportChecklist = document.createElement('div');
+		this.reportChecklist.className = 'ceo-report-checklist';
+		reportsSection.appendChild(this.reportChecklist);
+
+		this.updateReportChecklist();
+	}
+
+	private async getTNEContextPath(): Promise<URI> {
+		const workspaceFolders = this.workspaceContextService.getWorkspace().folders;
+		return workspaceFolders.length > 0 ? joinPath(workspaceFolders[0].uri, 'TNE-CONTEXT') : URI.file('/tmp/TNE-CONTEXT');
+	}
+
+	private async updateReportChecklist(): Promise<void> {
+		while (this.reportChecklist.firstChild) { this.reportChecklist.removeChild(this.reportChecklist.firstChild); }
+		const tneContextPath = await this.getTNEContextPath();
+		const reports = [
+			'ip1-focus-of-invention.md',
+			'ip2-provisional-patent-description.md',
+			'ip3-invention-methods.md',
+			'ip4-claims.md'
+		];
+		for (const report of reports) {
+			const listItem = document.createElement('div');
+			listItem.className = 'ceo-report-item';
+			const statusIndicator = document.createElement('span');
+			statusIndicator.className = 'status-indicator';
+			const label = document.createElement('label');
+			const displayReportName = report.replace(/ip\d-/, '').replace(/-/g, ' ').replace(/\.md$/, '')
+				.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+			label.textContent = displayReportName;
+
+			try {
+				const reportUri = joinPath(tneContextPath, report);
+				await this.fileService.resolve(reportUri);
+				statusIndicator.classList.add('checked');
+				label.classList.add('checked');
+			} catch {
+				statusIndicator.classList.add('unchecked');
+				label.classList.add('unchecked');
+			}
+			listItem.appendChild(statusIndicator);
+			listItem.appendChild(label);
+			listItem.addEventListener('click', () => this.handleReportClick(report, statusIndicator.classList.contains('checked')));
+			this.reportChecklist.appendChild(listItem);
+		}
+	}
+
+	private async handleReportClick(report: string, isCompleted: boolean): Promise<void> {
+		const reportToModeMap: { [key: string]: { slug: string; name: string } } = {
+			'ip1-focus-of-invention.md': { slug: 'ip1-focus-of-invention', name: 'Focus of Invention' },
+			'ip2-provisional-patent-description.md': { slug: 'ip2-provisional-patent-description', name: 'Provisional Patent Description' },
+			'ip3-invention-methods.md': { slug: 'ip3-invention-methods', name: 'Invention Description' },
+			'ip4-claims.md': { slug: 'ip4-claims', name: 'Claims' },
+		};
+		if (isCompleted) {
+			const tneContextPath = await this.getTNEContextPath();
+			const reportUri = joinPath(tneContextPath, report);
+			try {
+				await this.commandService.executeCommand('vscode.open', reportUri);
+				this.notificationService.info(localize('ip.report.opened', "Opened report: {0}", report));
+			} catch (error) {
+				this.notificationService.error(localize('ip.report.openError', "Failed to open report {0}: {1}", report, (error as any).message));
+			}
+		} else {
+			const modeInfo = reportToModeMap[report];
+			if (modeInfo) {
+				const message = localize('ip.mode.switchMessage', "Begin: {0}", modeInfo.name);
+				try {
+					await this.commandService.executeCommand('compass.service.startTask', { message, newTask: false, mode: modeInfo.slug });
+					this.notificationService.info(localize('ip.mode.switchTriggered', "Triggered mode switch to: {0}", modeInfo.name));
+				} catch (error) {
+					this.notificationService.error(localize('ip.mode.switchError', "Failed to trigger mode switch: {0}", (error as any).message));
+				}
+			}
+		}
+	}
+}
+
+const ipViewContainer = Registry.as<IViewContainersRegistry>(ViewExtensions.ViewContainersRegistry).registerViewContainer(
+	{
+		id: IP_VIEW_CONTAINER_ID,
+		title: localize2('ip', 'IP Agent'),
+		ctorDescriptor: new SyncDescriptor(ViewPaneContainer, [IP_VIEW_CONTAINER_ID, { mergeViewWithContainerWhenSingleView: true }]),
+		icon: Codicon.law,
+		storageId: IP_VIEW_CONTAINER_ID,
+		order: 7
+	},
+	ViewContainerLocation.Sidebar
+);
+Registry.as<IViewsRegistry>(ViewExtensions.ViewsRegistry).registerViews([{
+	id: IP_VIEW_ID,
+	name: localize2('ip.view', 'IP Agent'),
+	containerIcon: Codicon.law,
+	ctorDescriptor: new SyncDescriptor(IPView),
+	canMoveView: true,
+	canToggleVisibility: true,
+	when: undefined,
+}], ipViewContainer);
+
+
+// Presentation View
+const P_VIEW_CONTAINER_ID = 'workbench.view.presentation';
+const P_VIEW_ID = 'workbench.view.presentationView';
+
+class PresentationView extends ViewPane {
+	static readonly ID = P_VIEW_ID;
+	private reportChecklist!: HTMLElement;
+	private contentContainer!: HTMLElement;
+
+	constructor(
+		options: IViewPaneOptions,
+		@IKeybindingService keybindingService: IKeybindingService,
+		@IContextMenuService contextMenuService: IContextMenuService,
+		@IConfigurationService configurationService: IConfigurationService,
+		@IContextKeyService contextKeyService: IContextKeyService,
+		@IViewDescriptorService viewDescriptorService: IViewDescriptorService,
+		@IInstantiationService instantiationService: IInstantiationService,
+		@IOpenerService openerService: IOpenerService,
+		@IThemeService themeService: IThemeService,
+		@IHoverService hoverService: IHoverService,
+		@ICommandService private readonly commandService: ICommandService,
+		@INotificationService private readonly notificationService: INotificationService,
+		@IFileService private readonly fileService: IFileService,
+		@IWorkspaceContextService private readonly workspaceContextService: IWorkspaceContextService,
+	) {
+		super(
+			{ ...options, titleMenuId: MenuId.ViewTitle, singleViewPaneContainerTitle: 'Presentation' },
+			keybindingService, contextMenuService, configurationService, contextKeyService, viewDescriptorService,
+			instantiationService, openerService, themeService, hoverService
+		);
+	}
+
+	protected override renderBody(parent: HTMLElement): void {
+		super.renderBody(parent);
+		if (!this.contentContainer) {
+			this.contentContainer = document.createElement('div');
+			this.contentContainer.className = 'ceo-view-content';
+			parent.appendChild(this.contentContainer);
+		} else {
+			while (this.contentContainer.firstChild) { this.contentContainer.removeChild(this.contentContainer.firstChild); }
+		}
+
+		const reportsSection = document.createElement('div');
+		reportsSection.className = 'ceo-reports-section';
+		this.contentContainer.appendChild(reportsSection);
+
+		const reportsTitle = document.createElement('div');
+		reportsTitle.textContent = localize('p.reportsTitle', "Status");
+		reportsTitle.className = 'ceo-section-title';
+		reportsSection.appendChild(reportsTitle);
+
+		this.reportChecklist = document.createElement('div');
+		this.reportChecklist.className = 'ceo-report-checklist';
+		reportsSection.appendChild(this.reportChecklist);
+
+		this.updateReportChecklist();
+	}
+
+	private async getTNEContextPath(): Promise<URI> {
+		const workspaceFolders = this.workspaceContextService.getWorkspace().folders;
+		return workspaceFolders.length > 0 ? joinPath(workspaceFolders[0].uri, 'TNE-CONTEXT') : URI.file('/tmp/TNE-CONTEXT');
+	}
+
+	private async updateReportChecklist(): Promise<void> {
+		while (this.reportChecklist.firstChild) { this.reportChecklist.removeChild(this.reportChecklist.firstChild); }
+		const tneContextPath = await this.getTNEContextPath();
+		const reports = [
+			'p1-content-to-outline.md',
+			'p2-presentation.md'
+		];
+		for (const report of reports) {
+			const listItem = document.createElement('div');
+			listItem.className = 'ceo-report-item';
+			const statusIndicator = document.createElement('span');
+			statusIndicator.className = 'status-indicator';
+			const label = document.createElement('label');
+			const displayReportName = report.replace(/p\d-/, '').replace(/-/g, ' ').replace(/\.md$/, '')
+				.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+			label.textContent = displayReportName;
+
+			try {
+				const reportUri = joinPath(tneContextPath, report);
+				await this.fileService.resolve(reportUri);
+				statusIndicator.classList.add('checked');
+				label.classList.add('checked');
+			} catch {
+				statusIndicator.classList.add('unchecked');
+				label.classList.add('unchecked');
+			}
+			listItem.appendChild(statusIndicator);
+			listItem.appendChild(label);
+			listItem.addEventListener('click', () => this.handleReportClick(report, statusIndicator.classList.contains('checked')));
+			this.reportChecklist.appendChild(listItem);
+		}
+	}
+
+	private async handleReportClick(report: string, isCompleted: boolean): Promise<void> {
+		const reportToModeMap: { [key: string]: { slug: string; name: string } } = {
+			'p1-content-to-outline.md': { slug: 'p1-content-to-outline', name: 'Presentation: Creative Brief' },
+			'p2-presentation.md': { slug: 'p2-presentation', name: 'Presentation: Create Materials' },
+		};
+		if (isCompleted) {
+			const tneContextPath = await this.getTNEContextPath();
+			const reportUri = joinPath(tneContextPath, report);
+			try {
+				await this.commandService.executeCommand('vscode.open', reportUri);
+				this.notificationService.info(localize('p.report.opened', "Opened report: {0}", report));
+			} catch (error) {
+				this.notificationService.error(localize('p.report.openError', "Failed to open report {0}: {1}", report, (error as any).message));
+			}
+		} else {
+			const modeInfo = reportToModeMap[report];
+			if (modeInfo) {
+				const message = localize('p.mode.switchMessage', "Begin: {0}", modeInfo.name);
+				try {
+					await this.commandService.executeCommand('compass.service.startTask', { message, newTask: false, mode: modeInfo.slug });
+					this.notificationService.info(localize('p.mode.switchTriggered', "Triggered mode switch to: {0}", modeInfo.name));
+				} catch (error) {
+					this.notificationService.error(localize('p.mode.switchError', "Failed to trigger mode switch: {0}", (error as any).message));
+				}
+			}
+		}
+	}
+}
+
+const pViewContainer = Registry.as<IViewContainersRegistry>(ViewExtensions.ViewContainersRegistry).registerViewContainer(
+	{
+		id: P_VIEW_CONTAINER_ID,
+		title: localize2('presentation', 'Presentation'),
+		ctorDescriptor: new SyncDescriptor(ViewPaneContainer, [P_VIEW_CONTAINER_ID, { mergeViewWithContainerWhenSingleView: true }]),
+		icon: Codicon.mic,
+		storageId: P_VIEW_CONTAINER_ID,
+		order: 8
+	},
+	ViewContainerLocation.Sidebar
+);
+Registry.as<IViewsRegistry>(ViewExtensions.ViewsRegistry).registerViews([{
+	id: P_VIEW_ID,
+	name: localize2('presentation.view', 'Presentation'),
+	containerIcon: Codicon.mic,
+	ctorDescriptor: new SyncDescriptor(PresentationView),
+	canMoveView: true,
+	canToggleVisibility: true,
+	when: undefined,
+}], pViewContainer);
+
+
+// Coding View (C modes)
+const CODING_VIEW_CONTAINER_ID = 'workbench.view.coding';
+const CODING_VIEW_ID = 'workbench.view.codingView';
+
+class CodingView extends ViewPane {
+	static readonly ID = CODING_VIEW_ID;
+	private reportChecklist!: HTMLElement;
+	private contentContainer!: HTMLElement;
+
+	constructor(
+		options: IViewPaneOptions,
+		@IKeybindingService keybindingService: IKeybindingService,
+		@IContextMenuService contextMenuService: IContextMenuService,
+		@IConfigurationService configurationService: IConfigurationService,
+		@IContextKeyService contextKeyService: IContextKeyService,
+		@IViewDescriptorService viewDescriptorService: IViewDescriptorService,
+		@IInstantiationService instantiationService: IInstantiationService,
+		@IOpenerService openerService: IOpenerService,
+		@IThemeService themeService: IThemeService,
+		@IHoverService hoverService: IHoverService,
+		@ICommandService private readonly commandService: ICommandService,
+		@INotificationService private readonly notificationService: INotificationService,
+		@IFileService private readonly fileService: IFileService,
+		@IWorkspaceContextService private readonly workspaceContextService: IWorkspaceContextService,
+	) {
+		super(
+			{ ...options, titleMenuId: MenuId.ViewTitle, singleViewPaneContainerTitle: 'Coding' },
+			keybindingService, contextMenuService, configurationService, contextKeyService, viewDescriptorService,
+			instantiationService, openerService, themeService, hoverService
+		);
+	}
+
+	protected override renderBody(parent: HTMLElement): void {
+		super.renderBody(parent);
+		if (!this.contentContainer) {
+			this.contentContainer = document.createElement('div');
+			this.contentContainer.className = 'ceo-view-content';
+			parent.appendChild(this.contentContainer);
+		} else {
+			while (this.contentContainer.firstChild) { this.contentContainer.removeChild(this.contentContainer.firstChild); }
+		}
+
+		const reportsSection = document.createElement('div');
+		reportsSection.className = 'ceo-reports-section';
+		this.contentContainer.appendChild(reportsSection);
+
+		const reportsTitle = document.createElement('div');
+		reportsTitle.textContent = localize('coding.reportsTitle', "Status");
+		reportsTitle.className = 'ceo-section-title';
+		reportsSection.appendChild(reportsTitle);
+
+		this.reportChecklist = document.createElement('div');
+		this.reportChecklist.className = 'ceo-report-checklist';
+		reportsSection.appendChild(this.reportChecklist);
+
+		this.updateReportChecklist();
+	}
+
+	private async getTNEContextPath(): Promise<URI> {
+		const workspaceFolders = this.workspaceContextService.getWorkspace().folders;
+		return workspaceFolders.length > 0 ? joinPath(workspaceFolders[0].uri, 'TNE-CONTEXT') : URI.file('/tmp/TNE-CONTEXT');
+	}
+
+	private async updateReportChecklist(): Promise<void> {
+		while (this.reportChecklist.firstChild) { this.reportChecklist.removeChild(this.reportChecklist.firstChild); }
+		const tneContextPath = await this.getTNEContextPath();
+		const reports = [
+			'c1-uiux.md',
+			'c2-graphai.md',
+			'c3-deploy.md'
+		];
+		for (const report of reports) {
+			const listItem = document.createElement('div');
+			listItem.className = 'ceo-report-item';
+			const statusIndicator = document.createElement('span');
+			statusIndicator.className = 'status-indicator';
+			const label = document.createElement('label');
+			const displayReportName = report.replace(/c\d-/, '').replace(/-/g, ' ').replace(/\.md$/, '')
+				.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+			label.textContent = displayReportName;
+
+			try {
+				const reportUri = joinPath(tneContextPath, report);
+				await this.fileService.resolve(reportUri);
+				statusIndicator.classList.add('checked');
+				label.classList.add('checked');
+			} catch {
+				statusIndicator.classList.add('unchecked');
+				label.classList.add('unchecked');
+			}
+			listItem.appendChild(statusIndicator);
+			listItem.appendChild(label);
+			listItem.addEventListener('click', () => this.handleReportClick(report, statusIndicator.classList.contains('checked')));
+			this.reportChecklist.appendChild(listItem);
+		}
+	}
+
+	private async handleReportClick(report: string, isCompleted: boolean): Promise<void> {
+		const reportToModeMap: { [key: string]: { slug: string; name: string } } = {
+			'c1-uiux.md': { slug: 'c1-uiux', name: 'Coding: UI/UX' },
+			'c2-graphai.md': { slug: 'c2-graphai', name: 'Coding: GraphAI' },
+			'c3-deploy.md': { slug: 'c3-deploy', name: 'Coding: Deploy' },
+		};
+		if (isCompleted) {
+			const tneContextPath = await this.getTNEContextPath();
+			const reportUri = joinPath(tneContextPath, report);
+			try {
+				await this.commandService.executeCommand('vscode.open', reportUri);
+				this.notificationService.info(localize('coding.report.opened', "Opened report: {0}", report));
+			} catch (error) {
+				this.notificationService.error(localize('coding.report.openError', "Failed to open report {0}: {1}", report, (error as any).message));
+			}
+		} else {
+			const modeInfo = reportToModeMap[report];
+			if (modeInfo) {
+				const message = localize('coding.mode.switchMessage', "Begin: {0}", modeInfo.name);
+				try {
+					await this.commandService.executeCommand('compass.service.startTask', { message, newTask: false, mode: modeInfo.slug });
+					this.notificationService.info(localize('coding.mode.switchTriggered', "Triggered mode switch to: {0}", modeInfo.name));
+				} catch (error) {
+					this.notificationService.error(localize('coding.mode.switchError', "Failed to trigger mode switch: {0}", (error as any).message));
+				}
+			}
+		}
+	}
+}
+
+const codingViewContainer = Registry.as<IViewContainersRegistry>(ViewExtensions.ViewContainersRegistry).registerViewContainer(
+	{
+		id: CODING_VIEW_CONTAINER_ID,
+		title: localize2('coding', 'Coding'),
+		ctorDescriptor: new SyncDescriptor(ViewPaneContainer, [CODING_VIEW_CONTAINER_ID, { mergeViewWithContainerWhenSingleView: true }]),
+		icon: Codicon.code,
+		storageId: CODING_VIEW_CONTAINER_ID,
+		order: 9
+	},
+	ViewContainerLocation.Sidebar
+);
+Registry.as<IViewsRegistry>(ViewExtensions.ViewsRegistry).registerViews([{
+	id: CODING_VIEW_ID,
+	name: localize2('coding.view', 'Coding'),
+	containerIcon: Codicon.code,
+	ctorDescriptor: new SyncDescriptor(CodingView),
+	canMoveView: true,
+	canToggleVisibility: true,
+	when: undefined,
+}], codingViewContainer);
+
+
+// CTO View: Sidebar container and view wired to Compass
+const CTO_VIEW_CONTAINER_ID = 'workbench.view.cto';
+const CTO_VIEW_ID = 'workbench.view.ctoView';
+
+interface CTOCompanyInfo {
+	name: string;
+	industry: string;
+}
+
+class CTOView extends ViewPane {
+	static readonly ID = CTO_VIEW_ID;
+
+	private companyNameInput!: HTMLInputElement;
+	private industryInput!: HTMLInputElement;
+	private reportChecklist!: HTMLElement;
+	private contentContainer!: HTMLElement;
+	private companyNameDisplay!: HTMLElement;
+	private industryDisplay!: HTMLElement;
+
+	private companyInfo: CTOCompanyInfo = { name: '', industry: '' };
+
+	constructor(
+		options: IViewPaneOptions,
+		@IKeybindingService keybindingService: IKeybindingService,
+		@IContextMenuService contextMenuService: IContextMenuService,
+		@IConfigurationService configurationService: IConfigurationService,
+		@IContextKeyService contextKeyService: IContextKeyService,
+		@IViewDescriptorService viewDescriptorService: IViewDescriptorService,
+		@IInstantiationService instantiationService: IInstantiationService,
+		@IOpenerService openerService: IOpenerService,
+		@IThemeService themeService: IThemeService,
+		@IHoverService hoverService: IHoverService,
+		@ICommandService private readonly commandService: ICommandService,
+		@INotificationService private readonly notificationService: INotificationService,
+		@IFileService private readonly fileService: IFileService,
+		@IWorkspaceContextService private readonly workspaceContextService: IWorkspaceContextService,
+	) {
+		super(
+			{ ...options, titleMenuId: MenuId.ViewTitle, singleViewPaneContainerTitle: 'CTO View' },
+			keybindingService,
+			contextMenuService,
+			configurationService,
+			contextKeyService,
+			viewDescriptorService,
+			instantiationService,
+			openerService,
+			themeService,
+			hoverService
+		);
+		this._register(this.onDidChangeBodyVisibility(() => this.onBodyVisibilityChange()));
+	}
+
+	protected override renderBody(parent: HTMLElement): void {
+		super.renderBody(parent);
+
+		if (!this.contentContainer) {
+			this.contentContainer = document.createElement('div');
+			this.contentContainer.className = 'ceo-view-content';
+			parent.appendChild(this.contentContainer);
+		} else {
+			while (this.contentContainer.firstChild) {
+				this.contentContainer.removeChild(this.contentContainer.firstChild);
+			}
+		}
+
+		// Company Info Section
+		const companyInfoSection = document.createElement('div');
+		companyInfoSection.className = 'ceo-company-info-section';
+		this.contentContainer.appendChild(companyInfoSection);
+
+		const companyLabel = document.createElement('label');
+		companyLabel.textContent = localize('cto.companyLabel', "Company");
+		companyLabel.className = 'ceo-info-label';
+		companyInfoSection.appendChild(companyLabel);
+
+		this.companyNameDisplay = document.createElement('h1');
+		this.companyNameDisplay.className = 'ceo-company-name-display';
+		this.companyNameDisplay.addEventListener('dblclick', () => this.toggleEditMode('name', true));
+		companyInfoSection.appendChild(this.companyNameDisplay);
+
+		this.companyNameInput = document.createElement('input');
+		this.companyNameInput.type = 'text';
+		this.companyNameInput.placeholder = localize('cto.companyNamePlaceholder', "Enter company name");
+		this.companyNameInput.className = 'ceo-input ceo-hidden';
+		this.companyNameInput.addEventListener('change', () => this.saveCompanyInfo());
+		this.companyNameInput.addEventListener('blur', () => this.toggleEditMode('name', false));
+		companyInfoSection.appendChild(this.companyNameInput);
+
+		const industryLabel = document.createElement('label');
+		industryLabel.textContent = localize('cto.industryLabel', "Industry");
+		industryLabel.className = 'ceo-info-label';
+		companyInfoSection.appendChild(industryLabel);
+
+		this.industryDisplay = document.createElement('h2');
+		this.industryDisplay.className = 'ceo-industry-display';
+		this.industryDisplay.addEventListener('dblclick', () => this.toggleEditMode('industry', true));
+		companyInfoSection.appendChild(this.industryDisplay);
+
+		this.industryInput = document.createElement('input');
+		this.industryInput.type = 'text';
+		this.industryInput.placeholder = localize('cto.industryPlaceholder', "Enter industry");
+		this.industryInput.className = 'ceo-input ceo-hidden';
+		this.industryInput.addEventListener('change', () => this.saveCompanyInfo());
+		this.industryInput.addEventListener('blur', () => this.toggleEditMode('industry', false));
+		companyInfoSection.appendChild(this.industryInput);
+
+		// Reports Checklist Section
+		const reportsSection = document.createElement('div');
+		reportsSection.className = 'ceo-reports-section';
+		this.contentContainer.appendChild(reportsSection);
+
+		const reportsTitle = document.createElement('div');
+		reportsTitle.textContent = localize('cto.reportsTitle', "Status");
+		reportsTitle.className = 'ceo-section-title';
+		reportsSection.appendChild(reportsTitle);
+
+		this.reportChecklist = document.createElement('div');
+		this.reportChecklist.className = 'ceo-report-checklist';
+		reportsSection.appendChild(this.reportChecklist);
+
+		this.loadCompanyInfo();
+		this.updateReportChecklist();
+	}
+
+	private onBodyVisibilityChange(): void {
+		if (this.isBodyVisible()) {
+			this.loadCompanyInfo();
+			this.updateReportChecklist();
+		}
+	}
+
+	private async getCompanyInfoFilePath(): Promise<URI> {
+		const tneContextPath = await this.getTNEContextPath();
+		return joinPath(tneContextPath, 'company-info.json');
+	}
+
+	private async loadCompanyInfo(): Promise<void> {
+		const filePath = await this.getCompanyInfoFilePath();
+		try {
+			const content = await this.fileService.readFile(filePath);
+			this.companyInfo = JSON.parse(content.value.toString());
+			this.companyNameInput.value = this.companyInfo.name;
+			this.industryInput.value = this.companyInfo.industry;
+
+			this.companyNameDisplay.textContent = this.companyInfo.name;
+			this.industryDisplay.textContent = this.companyInfo.industry;
+			this.toggleEditMode('name', false);
+			this.toggleEditMode('industry', false);
+
+		} catch (error) {
+			if ((error as any).fileOperationResult === 1 /* FILE_NOT_FOUND */) {
+				this.notificationService.info(localize('cto.companyInfo.notFound', "company-info.json not found in TNE-CONTEXT. Please enter company details."));
+				this.companyInfo = { name: '', industry: '' };
+				this.companyNameInput.value = '';
+				this.industryInput.value = '';
+				this.toggleEditMode('name', true);
+				this.toggleEditMode('industry', true);
+			} else {
+				this.notificationService.error(localize('cto.companyInfo.loadError', "Failed to load company-info.json: {0}", (error as any).message));
+			}
+		}
+	}
+
+	private async saveCompanyInfo(): Promise<void> {
+		this.companyInfo.name = this.companyNameInput.value.trim();
+		this.companyInfo.industry = this.industryInput.value.trim();
+		const filePath = await this.getCompanyInfoFilePath();
+		try {
+			await this.fileService.writeFile(filePath, VSBuffer.fromString(JSON.stringify(this.companyInfo, null, 2)));
+			this.notificationService.info(localize('cto.companyInfo.saveSuccess', "Company info saved to TNE-CONTEXT/company-info.json."));
+			this.companyNameDisplay.textContent = this.companyInfo.name;
+			this.industryDisplay.textContent = this.companyInfo.industry;
+			this.toggleEditMode('name', false);
+			this.toggleEditMode('industry', false);
+		} catch (error) {
+			this.notificationService.error(localize('cto.companyInfo.saveError', "Failed to save company-info.json: {0}", (error as any).message));
+		}
+	}
+
+	private toggleEditMode(field: 'name' | 'industry', enable: boolean): void {
+		if (field === 'name') {
+			if (enable) {
+				this.companyNameDisplay.classList.add('ceo-hidden');
+				this.companyNameInput.classList.remove('ceo-hidden');
+				this.companyNameInput.focus();
+			} else {
+				this.companyNameDisplay.classList.remove('ceo-hidden');
+				this.companyNameInput.classList.add('ceo-hidden');
+			}
+		} else {
+			if (enable) {
+				this.industryDisplay.classList.add('ceo-hidden');
+				this.industryInput.classList.remove('ceo-hidden');
+				this.industryInput.focus();
+			} else {
+				this.industryDisplay.classList.remove('ceo-hidden');
+				this.industryInput.classList.add('ceo-hidden');
+			}
+		}
+	}
+
+	private async updateReportChecklist(): Promise<void> {
+		while (this.reportChecklist.firstChild) {
+			this.reportChecklist.removeChild(this.reportChecklist.firstChild);
+		}
+		const tneContextPath = await this.getTNEContextPath();
+		const reports = [
+			't1-exsisting-infrastructure.md',
+			't2-external-research.md',
+			't3-key-decisions.md',
+			't4-technical-recos.md',
+			't5-internal-recommendations.md',
+			't6-project-brief.md',
+			't7-document-technology.md'
+		];
+
+		for (const report of reports) {
+			const listItem = document.createElement('div');
+			listItem.className = 'ceo-report-item';
+
+			const statusIndicator = document.createElement('span');
+			statusIndicator.className = 'status-indicator';
+
+			const label = document.createElement('label');
+			const displayReportName = report
+				.replace(/t\d-/, '')
+				.replace(/-/g, ' ')
+				.replace(/\.md$/, '')
+				.split(' ')
+				.map(word => word.charAt(0).toUpperCase() + word.slice(1))
+				.join(' ');
+			label.textContent = displayReportName;
+
+			try {
+				const reportUri = joinPath(tneContextPath, report);
+				await this.fileService.resolve(reportUri);
+				statusIndicator.classList.add('checked');
+				label.classList.add('checked');
+			} catch {
+				statusIndicator.classList.add('unchecked');
+				label.classList.add('unchecked');
+			}
+
+			listItem.appendChild(statusIndicator);
+			listItem.appendChild(label);
+			listItem.addEventListener('click', () => this.handleReportClick(report, statusIndicator.classList.contains('checked')));
+			this.reportChecklist.appendChild(listItem);
+		}
+	}
+
+	private async handleReportClick(report: string, isCompleted: boolean): Promise<void> {
+		const reportToModeMap: { [key: string]: { slug: string; name: string } } = {
+			't1-exsisting-infrastructure.md': { slug: 't1-exsisting-infrastructure', name: 'Existing Infrastructure' },
+			't2-external-research.md': { slug: 't2-external-research', name: 'External Research' },
+			't3-key-decisions.md': { slug: 't3-key-decisions', name: 'Key Decisions' },
+			't4-technical-recos.md': { slug: 't4-technical-recos', name: 'Technical Recos' },
+			't5-internal-recommendations.md': { slug: 't5-internal-recommendations', name: 'Internal Recommendations' },
+			't6-project-brief.md': { slug: 't6-project-brief', name: 'Project Brief' },
+			't7-document-technology.md': { slug: 't7-document-technology', name: 'Document Technology' },
+		};
+
+		if (isCompleted) {
+			const tneContextPath = await this.getTNEContextPath();
+			const reportUri = joinPath(tneContextPath, report);
+			try {
+				await this.commandService.executeCommand('vscode.open', reportUri);
+				this.notificationService.info(localize('cto.report.opened', "Opened report: {0}", report));
+			} catch (error) {
+				this.notificationService.error(localize('cto.report.openError', "Failed to open report {0}: {1}", report, (error as any).message));
+			}
+		} else {
+			const modeInfo = reportToModeMap[report];
+			if (modeInfo) {
+				const companyName = this.companyInfo.name || 'the company';
+				const industry = this.companyInfo.industry || 'unspecified';
+				const message = localize(
+					'cto.mode.switchMessage',
+					"The user requests {0} for {1} in the {2} industry. Switch to the {0} mode and begin.",
+					modeInfo.name,
+					companyName,
+					industry
+				);
+
+				try {
+					await this.commandService.executeCommand('compass.service.startTask', { message, newTask: false, mode: modeInfo.slug });
+					this.notificationService.info(localize('cto.mode.switchTriggered', "Triggered mode switch to: {0}", modeInfo.name));
+				} catch (error) {
+					this.notificationService.error(localize('cto.mode.switchError', "Failed to trigger mode switch to {0}: {1}", modeInfo.name, (error as any).message));
+				}
+			} else {
+				this.notificationService.warn(localize('cto.mode.noMapping', "No mode mapping found for report: {0}", report));
+			}
+		}
+	}
+
+	private async getTNEContextPath(): Promise<URI> {
+		const workspaceFolders = this.workspaceContextService.getWorkspace().folders;
+		let tneContextUri: URI;
+		if (workspaceFolders.length > 0) {
+			tneContextUri = joinPath(workspaceFolders[0].uri, 'TNE-CONTEXT');
+		} else {
+			tneContextUri = URI.file('/tmp/TNE-CONTEXT');
+		}
+		try {
+			await this.fileService.resolve(tneContextUri);
+		} catch (error) {
+			if ((error as any).fileOperationResult === 1 /* FILE_NOT_FOUND */) {
+				await this.fileService.createFolder(tneContextUri);
+				this.notificationService.info(localize('cto.tneContext.created', "TNE-CONTEXT directory created."));
+			} else {
+				this.notificationService.error(localize('cto.tneContext.error', "Error resolving/creating TNE-CONTEXT directory: {0}", (error as any).message));
+			}
+		}
+		return tneContextUri;
+	}
+
+	override shouldShowWelcome(): boolean {
+		return false;
+	}
+}
+
+// Register CTO container in the primary Side Bar
+const ctoViewContainer = Registry.as<IViewContainersRegistry>(ViewExtensions.ViewContainersRegistry).registerViewContainer(
+	{
+		id: CTO_VIEW_CONTAINER_ID,
+		title: localize2('cto', 'CTO'),
+		ctorDescriptor: new SyncDescriptor(ViewPaneContainer, [CTO_VIEW_CONTAINER_ID, { mergeViewWithContainerWhenSingleView: true }]),
+		icon: Codicon.tools,
+		storageId: CTO_VIEW_CONTAINER_ID,
+		order: 2
+	},
+	ViewContainerLocation.Sidebar
+);
+
+// Register the CTO view inside the container
+Registry.as<IViewsRegistry>(ViewExtensions.ViewsRegistry).registerViews([{
+	id: CTO_VIEW_ID,
+	name: localize2('cto.view', 'CTO'),
+	containerIcon: Codicon.tools,
+	ctorDescriptor: new SyncDescriptor(CTOView),
+	canMoveView: true,
+	canToggleVisibility: true,
+	when: undefined,
+}], ctoViewContainer);
+
+
+// CSO View: Sidebar container and view wired to Compass
+const CSO_VIEW_CONTAINER_ID = 'workbench.view.cso';
+const CSO_VIEW_ID = 'workbench.view.csoView';
+
+interface CSOCompanyInfo {
+	name: string;
+	industry: string;
+}
+
+class CSOView extends ViewPane {
+	static readonly ID = CSO_VIEW_ID;
+
+	private companyNameInput!: HTMLInputElement;
+	private industryInput!: HTMLInputElement;
+	private reportChecklist!: HTMLElement;
+	private contentContainer!: HTMLElement;
+	private companyNameDisplay!: HTMLElement;
+	private industryDisplay!: HTMLElement;
+
+	private companyInfo: CSOCompanyInfo = { name: '', industry: '' };
+
+	constructor(
+		options: IViewPaneOptions,
+		@IKeybindingService keybindingService: IKeybindingService,
+		@IContextMenuService contextMenuService: IContextMenuService,
+		@IConfigurationService configurationService: IConfigurationService,
+		@IContextKeyService contextKeyService: IContextKeyService,
+		@IViewDescriptorService viewDescriptorService: IViewDescriptorService,
+		@IInstantiationService instantiationService: IInstantiationService,
+		@IOpenerService openerService: IOpenerService,
+		@IThemeService themeService: IThemeService,
+		@IHoverService hoverService: IHoverService,
+		@ICommandService private readonly commandService: ICommandService,
+		@INotificationService private readonly notificationService: INotificationService,
+		@IFileService private readonly fileService: IFileService,
+		@IWorkspaceContextService private readonly workspaceContextService: IWorkspaceContextService,
+	) {
+		super(
+			{ ...options, titleMenuId: MenuId.ViewTitle, singleViewPaneContainerTitle: 'CSO View' },
+			keybindingService,
+			contextMenuService,
+			configurationService,
+			contextKeyService,
+			viewDescriptorService,
+			instantiationService,
+			openerService,
+			themeService,
+			hoverService
+		);
+		this._register(this.onDidChangeBodyVisibility(() => this.onBodyVisibilityChange()));
+	}
+
+	protected override renderBody(parent: HTMLElement): void {
+		super.renderBody(parent);
+
+		if (!this.contentContainer) {
+			this.contentContainer = document.createElement('div');
+			this.contentContainer.className = 'ceo-view-content';
+			parent.appendChild(this.contentContainer);
+		} else {
+			while (this.contentContainer.firstChild) {
+				this.contentContainer.removeChild(this.contentContainer.firstChild);
+			}
+		}
+
+		const companyInfoSection = document.createElement('div');
+		companyInfoSection.className = 'ceo-company-info-section';
+		this.contentContainer.appendChild(companyInfoSection);
+
+		const companyLabel = document.createElement('label');
+		companyLabel.textContent = localize('cso.companyLabel', "Company");
+		companyLabel.className = 'ceo-info-label';
+		companyInfoSection.appendChild(companyLabel);
+
+		this.companyNameDisplay = document.createElement('h1');
+		this.companyNameDisplay.className = 'ceo-company-name-display';
+		this.companyNameDisplay.addEventListener('dblclick', () => this.toggleEditMode('name', true));
+		companyInfoSection.appendChild(this.companyNameDisplay);
+
+		this.companyNameInput = document.createElement('input');
+		this.companyNameInput.type = 'text';
+		this.companyNameInput.placeholder = localize('cso.companyNamePlaceholder', "Enter company name");
+		this.companyNameInput.className = 'ceo-input ceo-hidden';
+		this.companyNameInput.addEventListener('change', () => this.saveCompanyInfo());
+		this.companyNameInput.addEventListener('blur', () => this.toggleEditMode('name', false));
+		companyInfoSection.appendChild(this.companyNameInput);
+
+		const industryLabel = document.createElement('label');
+		industryLabel.textContent = localize('cso.industryLabel', "Industry");
+		industryLabel.className = 'ceo-info-label';
+		companyInfoSection.appendChild(industryLabel);
+
+		this.industryDisplay = document.createElement('h2');
+		this.industryDisplay.className = 'ceo-industry-display';
+		this.industryDisplay.addEventListener('dblclick', () => this.toggleEditMode('industry', true));
+		companyInfoSection.appendChild(this.industryDisplay);
+
+		this.industryInput = document.createElement('input');
+		this.industryInput.type = 'text';
+		this.industryInput.placeholder = localize('cso.industryPlaceholder', "Enter industry");
+		this.industryInput.className = 'ceo-input ceo-hidden';
+		this.industryInput.addEventListener('change', () => this.saveCompanyInfo());
+		this.industryInput.addEventListener('blur', () => this.toggleEditMode('industry', false));
+		companyInfoSection.appendChild(this.industryInput);
+
+		const reportsSection = document.createElement('div');
+		reportsSection.className = 'ceo-reports-section';
+		this.contentContainer.appendChild(reportsSection);
+
+		const reportsTitle = document.createElement('div');
+		reportsTitle.textContent = localize('cso.reportsTitle', "Status");
+		reportsTitle.className = 'ceo-section-title';
+		reportsSection.appendChild(reportsTitle);
+
+		this.reportChecklist = document.createElement('div');
+		this.reportChecklist.className = 'ceo-report-checklist';
+		reportsSection.appendChild(this.reportChecklist);
+
+		this.loadCompanyInfo();
+		this.updateReportChecklist();
+	}
+
+	private onBodyVisibilityChange(): void {
+		if (this.isBodyVisible()) {
+			this.loadCompanyInfo();
+			this.updateReportChecklist();
+		}
+	}
+
+	private async getCompanyInfoFilePath(): Promise<URI> {
+		const tneContextPath = await this.getTNEContextPath();
+		return joinPath(tneContextPath, 'company-info.json');
+	}
+
+	private async loadCompanyInfo(): Promise<void> {
+		const filePath = await this.getCompanyInfoFilePath();
+		try {
+			const content = await this.fileService.readFile(filePath);
+			this.companyInfo = JSON.parse(content.value.toString());
+			this.companyNameInput.value = this.companyInfo.name;
+			this.industryInput.value = this.companyInfo.industry;
+
+			this.companyNameDisplay.textContent = this.companyInfo.name;
+			this.industryDisplay.textContent = this.companyInfo.industry;
+			this.toggleEditMode('name', false);
+			this.toggleEditMode('industry', false);
+
+		} catch (error) {
+			if ((error as any).fileOperationResult === 1 /* FILE_NOT_FOUND */) {
+				this.notificationService.info(localize('cso.companyInfo.notFound', "company-info.json not found in TNE-CONTEXT. Please enter company details."));
+				this.companyInfo = { name: '', industry: '' };
+				this.companyNameInput.value = '';
+				this.industryInput.value = '';
+				this.toggleEditMode('name', true);
+				this.toggleEditMode('industry', true);
+			} else {
+				this.notificationService.error(localize('cso.companyInfo.loadError', "Failed to load company-info.json: {0}", (error as any).message));
+			}
+		}
+	}
+
+	private async saveCompanyInfo(): Promise<void> {
+		this.companyInfo.name = this.companyNameInput.value.trim();
+		this.companyInfo.industry = this.industryInput.value.trim();
+		const filePath = await this.getCompanyInfoFilePath();
+		try {
+			await this.fileService.writeFile(filePath, VSBuffer.fromString(JSON.stringify(this.companyInfo, null, 2)));
+			this.notificationService.info(localize('cso.companyInfo.saveSuccess', "Company info saved to TNE-CONTEXT/company-info.json."));
+			this.companyNameDisplay.textContent = this.companyInfo.name;
+			this.industryDisplay.textContent = this.companyInfo.industry;
+			this.toggleEditMode('name', false);
+			this.toggleEditMode('industry', false);
+		} catch (error) {
+			this.notificationService.error(localize('cso.companyInfo.saveError', "Failed to save company-info.json: {0}", (error as any).message));
+		}
+	}
+
+	private toggleEditMode(field: 'name' | 'industry', enable: boolean): void {
+		if (field === 'name') {
+			if (enable) {
+				this.companyNameDisplay.classList.add('ceo-hidden');
+				this.companyNameInput.classList.remove('ceo-hidden');
+				this.companyNameInput.focus();
+			} else {
+				this.companyNameDisplay.classList.remove('ceo-hidden');
+				this.companyNameInput.classList.add('ceo-hidden');
+			}
+		} else {
+			if (enable) {
+				this.industryDisplay.classList.add('ceo-hidden');
+				this.industryInput.classList.remove('ceo-hidden');
+				this.industryInput.focus();
+			} else {
+				this.industryDisplay.classList.remove('ceo-hidden');
+				this.industryInput.classList.add('ceo-hidden');
+			}
+		}
+	}
+
+	private async updateReportChecklist(): Promise<void> {
+		while (this.reportChecklist.firstChild) {
+			this.reportChecklist.removeChild(this.reportChecklist.firstChild);
+		}
+		const tneContextPath = await this.getTNEContextPath();
+		const reports = [
+			'bo1-skeptics-and-citations.md',
+			'bo2-summary.md',
+			'bo3-business-website.md'
+		];
+
+		for (const report of reports) {
+			const listItem = document.createElement('div');
+			listItem.className = 'ceo-report-item';
+
+			const statusIndicator = document.createElement('span');
+			statusIndicator.className = 'status-indicator';
+
+			const label = document.createElement('label');
+			const displayReportName = report
+				.replace(/bo\d-/, '')
+				.replace(/-/g, ' ')
+				.replace(/\.md$/, '')
+				.split(' ')
+				.map(word => word.charAt(0).toUpperCase() + word.slice(1))
+				.join(' ');
+			label.textContent = displayReportName;
+
+			try {
+				const reportUri = joinPath(tneContextPath, report);
+				await this.fileService.resolve(reportUri);
+				statusIndicator.classList.add('checked');
+				label.classList.add('checked');
+			} catch {
+				statusIndicator.classList.add('unchecked');
+				label.classList.add('unchecked');
+			}
+
+			listItem.appendChild(statusIndicator);
+			listItem.appendChild(label);
+			listItem.addEventListener('click', () => this.handleReportClick(report, statusIndicator.classList.contains('checked')));
+			this.reportChecklist.appendChild(listItem);
+		}
+	}
+
+	private async handleReportClick(report: string, isCompleted: boolean): Promise<void> {
+		const reportToModeMap: { [key: string]: { slug: string; name: string } } = {
+			'bo1-skeptics-and-citations.md': { slug: 'bo1-skeptics-and-citations', name: 'Skeptics and Citations' },
+			'bo2-summary.md': { slug: 'bo2-summary', name: 'Summary' },
+			'bo3-business-website.md': { slug: 'bo3-business-website', name: 'Business Website' },
+		};
+
+		if (isCompleted) {
+			const tneContextPath = await this.getTNEContextPath();
+			const reportUri = joinPath(tneContextPath, report);
+			try {
+				await this.commandService.executeCommand('vscode.open', reportUri);
+				this.notificationService.info(localize('cso.report.opened', "Opened report: {0}", report));
+			} catch (error) {
+				this.notificationService.error(localize('cso.report.openError', "Failed to open report {0}: {1}", report, (error as any).message));
+			}
+		} else {
+			const modeInfo = reportToModeMap[report];
+			if (modeInfo) {
+				const companyName = this.companyInfo.name || 'the company';
+				const industry = this.companyInfo.industry || 'unspecified';
+				const message = localize(
+					'cso.mode.switchMessage',
+					"The user requests {0} for {1} in the {2} industry. Switch to the {0} mode and begin.",
+					modeInfo.name,
+					companyName,
+					industry
+				);
+
+				try {
+					await this.commandService.executeCommand('compass.service.startTask', { message, newTask: false, mode: modeInfo.slug });
+					this.notificationService.info(localize('cso.mode.switchTriggered', "Triggered mode switch to: {0}", modeInfo.name));
+				} catch (error) {
+					this.notificationService.error(localize('cso.mode.switchError', "Failed to trigger mode switch to {0}: {1}", modeInfo.name, (error as any).message));
+				}
+			} else {
+				this.notificationService.warn(localize('cso.mode.noMapping', "No mode mapping found for report: {0}", report));
+			}
+		}
+	}
+
+	private async getTNEContextPath(): Promise<URI> {
+		const workspaceFolders = this.workspaceContextService.getWorkspace().folders;
+		let tneContextUri: URI;
+		if (workspaceFolders.length > 0) {
+			tneContextUri = joinPath(workspaceFolders[0].uri, 'TNE-CONTEXT');
+		} else {
+			tneContextUri = URI.file('/tmp/TNE-CONTEXT');
+		}
+		try {
+			await this.fileService.resolve(tneContextUri);
+		} catch (error) {
+			if ((error as any).fileOperationResult === 1 /* FILE_NOT_FOUND */) {
+				await this.fileService.createFolder(tneContextUri);
+				this.notificationService.info(localize('cso.tneContext.created', "TNE-CONTEXT directory created."));
+			} else {
+				this.notificationService.error(localize('cso.tneContext.error', "Error resolving/creating TNE-CONTEXT directory: {0}", (error as any).message));
+			}
+		}
+		return tneContextUri;
+	}
+
+	override shouldShowWelcome(): boolean {
+		return false;
+	}
+}
+
+// Register CSO container in the primary Side Bar
+const csoViewContainer = Registry.as<IViewContainersRegistry>(ViewExtensions.ViewContainersRegistry).registerViewContainer(
+	{
+		id: CSO_VIEW_CONTAINER_ID,
+		title: localize2('cso', 'CSO'),
+		ctorDescriptor: new SyncDescriptor(ViewPaneContainer, [CSO_VIEW_CONTAINER_ID, { mergeViewWithContainerWhenSingleView: true }]),
+		icon: Codicon.lightbulb,
+		storageId: CSO_VIEW_CONTAINER_ID,
+		order: 3
+	},
+	ViewContainerLocation.Sidebar
+);
+
+// Register the CSO view inside the container
+Registry.as<IViewsRegistry>(ViewExtensions.ViewsRegistry).registerViews([{
+	id: CSO_VIEW_ID,
+	name: localize2('cso.view', 'CSO'),
+	containerIcon: Codicon.lightbulb,
+	ctorDescriptor: new SyncDescriptor(CSOView),
+	canMoveView: true,
+	canToggleVisibility: true,
+	when: undefined,
+}], csoViewContainer);

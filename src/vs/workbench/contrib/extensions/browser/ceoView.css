@@ -1,141 +1,198 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
 /* CEO View Styles */
 
 .ceo-view-content {
-    display: flex;
-    flex-direction: column;
-    padding: 12px;
-    gap: 12px;
-    height: 100%;
-    box-sizing: border-box;
-    font-family: var(--vscode-font-family);
-    color: var(--vscode-foreground);
+	display: flex;
+	flex-direction: column;
+	padding: 12px;
+	gap: 12px;
+	height: 100%;
+	box-sizing: border-box;
+	color: var(--vscode-foreground);
 }
 
 .ceo-section-title {
-    font-weight: 600;
-    font-size: 1.1em;
-    margin-bottom: 8px;
-    color: var(--vscode-editor-foreground);
+	font-weight: 600;
+	font-size: 1.1em;
+	margin-bottom: 8px;
+	color: var(--vscode-editor-foreground);
+}
+
+/* Company Info Display as Headers */
+.ceo-company-name-display {
+	font-size: 1.5em; /* H1 size */
+	margin: 0;
+	padding: 0;
+	color: var(--vscode-foreground);
+	cursor: pointer;
+}
+
+.ceo-industry-display {
+	font-size: 1.2em; /* H2 size */
+	margin: 0;
+	padding: 0;
+	color: var(--vscode-foreground);
+	cursor: pointer;
+}
+
+.ceo-info-label {
+	font-size: 0.9em;
+	font-weight: bold;
+	margin-top: 10px;
+	margin-bottom: 2px;
+	color: var(--vscode-editor-foreground);
 }
 
 .ceo-company-info-section label {
-    font-size: 0.9em;
-    margin-bottom: 4px;
-    display: block;
-    color: var(--vscode-editor-foreground);
+	font-size: 0.9em;
+	margin-bottom: 4px;
+	display: block;
+	color: var(--vscode-editor-foreground);
 }
 
 .ceo-input {
-    width: 100%;
-    padding: 8px;
-    margin-bottom: 10px;
-    border: 1px solid var(--vscode-input-border);
-    border-radius: 3px;
-    background-color: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    box-sizing: border-box;
+	width: 100%;
+	padding: 8px;
+	margin-bottom: 10px;
+	border: 1px solid var(--vscode-input-border);
+	border-radius: 3px;
+	background-color: var(--vscode-input-background);
+	color: var(--vscode-input-foreground);
+	box-sizing: border-box;
 }
 
 .ceo-input::placeholder {
-    color: var(--vscode-input-placeholderForeground);
+	color: var(--vscode-input-placeholderForeground);
 }
 
 .ceo-input:focus {
-    outline: 1px solid var(--vscode-focusBorder);
-    border-color: var(--vscode-focusBorder);
+	outline: 1px solid var(--vscode-focusBorder);
+	border-color: var(--vscode-focusBorder);
 }
 
 .ceo-reports-section {
-    margin-top: 15px;
+	margin-top: 15px;
 }
 
 .ceo-report-checklist {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	min-height: 50px; /* Ensure visibility even when empty */
+	border: 1px dashed var(--vscode-editorGroup-border); /* Optional: visual cue for empty state */
+	padding: 8px;
+	border-radius: 3px;
 }
 
 .ceo-report-item {
-    display: flex;
-    align-items: center;
-    font-size: 0.9em;
+	display: flex;
+	align-items: flex-start; /* Align items to the start for multi-line text */
+	font-size: 0.9em;
+	margin-bottom: 4px; /* Add some spacing between items */
 }
 
-.ceo-report-item input[type="checkbox"] {
-    margin-right: 8px;
-    accent-color: var(--vscode-button-background); /* Use a theme-consistent color */
+.ceo-report-item .status-indicator {
+	display: inline-block;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	margin-right: 8px;
+	margin-top: 7px; /* Align with the first line of text */
+	flex-shrink: 0;
+}
+
+.ceo-report-item .status-indicator.checked {
+	background: var(--vscode-charts-green); /* Green for existing/completed */
+}
+
+.ceo-report-item .status-indicator.unchecked {
+	border: 1px solid var(--vscode-descriptionForeground); /* Hollow for missing/pending */
+	background: transparent;
+}
+
+.ceo-report-item label {
+	color: var(--vscode-foreground);
+	word-break: break-word; /* Allow long report names to wrap */
 }
 
 .ceo-report-item label.checked {
-    color: var(--vscode-gitDecoration-addedResourceForeground); /* Greenish for existing */
+	color: var(--vscode-charts-green|--vscode-editorWarning-foreground); /* Greenish for existing */
+	text-decoration: line-through;
+	opacity: 0.8;
 }
 
 .ceo-report-item label.unchecked {
-    color: var(--vscode-editor-warningForeground); /* Yellowish for missing */
-    opacity: 0.7;
+	color: var(--vscode-charts-green|--vscode-editorWarning-foreground); /* Yellowish for missing */
+	opacity: 0.9;
 }
 
 .ceo-separator {
-    border: none;
-    border-top: 1px solid var(--vscode-editorGroup-border);
-    margin: 15px 0;
+	border: none;
+	border-top: 1px solid var(--vscode-editorGroup-border);
+	margin: 15px 0;
 }
 
 .ceo-textarea {
-    width: 100%;
-    padding: 10px;
-    border: 1px solid var(--vscode-input-border);
-    border-radius: 3px;
-    background-color: var(--vscode-input-background);
-    color: var(--vscode-input-foreground);
-    box-sizing: border-box;
-    resize: vertical;
-    min-height: 80px;
-    font-family: var(--vscode-font-family);
+	width: 100%;
+	padding: 10px;
+	border: 1px solid var(--vscode-input-border);
+	border-radius: 3px;
+	background-color: var(--vscode-input-background);
+	color: var(--vscode-input-foreground);
+	box-sizing: border-box;
+	resize: vertical;
+	min-height: 80px;
 }
 
 .ceo-textarea::placeholder {
-    color: var(--vscode-input-placeholderForeground);
+	color: var(--vscode-input-placeholderForeground);
 }
 
 .ceo-textarea:focus {
-    outline: 1px solid var(--vscode-focusBorder);
-    border-color: var(--vscode-focusBorder);
+	outline: 1px solid var(--vscode-focusBorder);
+	border-color: var(--vscode-focusBorder);
 }
 
 .ceo-controls {
-    display: flex;
-    align-items: center;
-    justify-content: space-between; /* Distribute items */
-    margin-top: 10px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between; /* Distribute items */
+	margin-top: 10px;
 }
 
 .ceo-send-button {
-    background-color: var(--vscode-button-background);
-    color: var(--vscode-button-foreground);
-    border: none;
-    padding: 8px 15px;
-    border-radius: 3px;
-    cursor: pointer;
-    font-size: 0.9em;
-    transition: background-color 0.2s ease;
+	background-color: var(--vscode-button-background);
+	color: var(--vscode-button-foreground);
+	border: none;
+	padding: 8px 15px;
+	border-radius: 3px;
+	cursor: pointer;
+	font-size: 0.9em;
+	transition: background-color 0.2s ease;
 }
 
 .ceo-send-button:hover:not(:disabled) {
-    background-color: var(--vscode-button-hoverBackground);
+	background-color: var(--vscode-button-hoverBackground);
 }
 
 .ceo-send-button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
+	opacity: 0.6;
+	cursor: not-allowed;
 }
 
 .ceo-controls label {
-    font-size: 0.9em;
-    color: var(--vscode-editor-foreground);
+	font-size: 0.9em;
+	color: var(--vscode-editor-foreground);
 }
 
 .ceo-controls input[type="checkbox"] {
-    margin-right: 5px;
-    accent-color: var(--vscode-button-background);
+	margin-right: 5px;
+	accent-color: var(--vscode-button-background);
+}
+
+.ceo-hidden {
+	display: none;
 }
