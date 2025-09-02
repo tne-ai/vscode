@@ -4069,8 +4069,13 @@ class CodingView extends ViewPane {
 			const statusIndicator = document.createElement('span');
 			statusIndicator.className = 'status-indicator';
 			const label = document.createElement('label');
-			const displayReportName = report.replace(/c\d-/, '').replace(/-/g, ' ').replace(/\.md$/, '')
-				.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+			let displayReportName: string;
+			if (report === 'c1-uiux.md') {
+				displayReportName = 'User Interface';
+			} else {
+				displayReportName = report.replace(/c\d-/, '').replace(/-/g, ' ').replace(/\.md$/, '')
+					.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+			}
 			label.textContent = displayReportName;
 
 			try {
