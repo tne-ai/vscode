@@ -2774,6 +2774,8 @@ class PMView extends ViewPane {
 	private companyNameDisplay!: HTMLElement;
 	private industryDisplay!: HTMLElement;
 
+	private companyInfo: { name: string; industry: string } = { name: '', industry: '' };
+
 	constructor(
 		options: IViewPaneOptions,
 		@IKeybindingService keybindingService: IKeybindingService,
@@ -2795,6 +2797,7 @@ class PMView extends ViewPane {
 			keybindingService, contextMenuService, configurationService, contextKeyService, viewDescriptorService,
 			instantiationService, openerService, themeService, hoverService
 		);
+		this._register(this.onDidChangeBodyVisibility(() => this.onBodyVisibilityChange()));
 	}
 
 	protected override renderBody(parent: HTMLElement): void {
@@ -2818,12 +2821,15 @@ class PMView extends ViewPane {
 
 		this.companyNameDisplay = document.createElement('h1');
 		this.companyNameDisplay.className = 'ceo-company-name-display';
+		this.companyNameDisplay.addEventListener('dblclick', () => this.toggleEditMode('name', true));
 		companyInfoSection.appendChild(this.companyNameDisplay);
 
 		this.companyNameInput = document.createElement('input');
 		this.companyNameInput.type = 'text';
 		this.companyNameInput.placeholder = localize('pm.companyNamePlaceholder', "Enter company name");
 		this.companyNameInput.className = 'ceo-input ceo-hidden';
+		this.companyNameInput.addEventListener('change', () => this.saveCompanyInfo());
+		this.companyNameInput.addEventListener('blur', () => this.toggleEditMode('name', false));
 		companyInfoSection.appendChild(this.companyNameInput);
 
 		const industryLabel = document.createElement('label');
@@ -2833,12 +2839,15 @@ class PMView extends ViewPane {
 
 		this.industryDisplay = document.createElement('h2');
 		this.industryDisplay.className = 'ceo-industry-display';
+		this.industryDisplay.addEventListener('dblclick', () => this.toggleEditMode('industry', true));
 		companyInfoSection.appendChild(this.industryDisplay);
 
 		this.industryInput = document.createElement('input');
 		this.industryInput.type = 'text';
 		this.industryInput.placeholder = localize('pm.industryPlaceholder', "Enter industry");
 		this.industryInput.className = 'ceo-input ceo-hidden';
+		this.industryInput.addEventListener('change', () => this.saveCompanyInfo());
+		this.industryInput.addEventListener('blur', () => this.toggleEditMode('industry', false));
 		companyInfoSection.appendChild(this.industryInput);
 
 		const reportsSection = document.createElement('div');
@@ -2854,12 +2863,89 @@ class PMView extends ViewPane {
 		this.reportChecklist.className = 'ceo-report-checklist';
 		reportsSection.appendChild(this.reportChecklist);
 
+		this.loadCompanyInfo();
 		this.updateReportChecklist();
+	}
+
+	private onBodyVisibilityChange(): void {
+		if (this.isBodyVisible()) {
+			this.loadCompanyInfo();
+			this.updateReportChecklist();
+		}
+	}
+
+	private async getCompanyInfoFilePath(): Promise<URI> {
+		const tneContext = await this.getTNEContextPath();
+		return joinPath(tneContext, 'company-info.json');
 	}
 
 	private async getTNEContextPath(): Promise<URI> {
 		const workspaceFolders = this.workspaceContextService.getWorkspace().folders;
 		return workspaceFolders.length > 0 ? joinPath(workspaceFolders[0].uri, 'TNE-CONTEXT') : URI.file('/tmp/TNE-CONTEXT');
+	}
+
+	private async loadCompanyInfo(): Promise<void> {
+		const filePath = await this.getCompanyInfoFilePath();
+		try {
+			const content = await this.fileService.readFile(filePath);
+			this.companyInfo = JSON.parse(content.value.toString());
+			this.companyNameInput.value = this.companyInfo.name;
+			this.industryInput.value = this.companyInfo.industry;
+
+			this.companyNameDisplay.textContent = this.companyInfo.name;
+			this.industryDisplay.textContent = this.companyInfo.industry;
+			this.toggleEditMode('name', false);
+			this.toggleEditMode('industry', false);
+		} catch (error) {
+			if ((error as any).fileOperationResult === 1 /* FILE_NOT_FOUND */) {
+				this.notificationService.info(localize('pm.companyInfo.notFound', "company-info.json not found in TNE-CONTEXT. Please enter company details."));
+				this.companyInfo = { name: '', industry: '' };
+				this.companyNameInput.value = '';
+				this.industryInput.value = '';
+				this.toggleEditMode('name', true);
+				this.toggleEditMode('industry', true);
+			} else {
+				this.notificationService.error(localize('pm.companyInfo.loadError', "Failed to load company-info.json: {0}", (error as any).message));
+			}
+		}
+	}
+
+	private async saveCompanyInfo(): Promise<void> {
+		this.companyInfo.name = this.companyNameInput.value.trim();
+		this.companyInfo.industry = this.industryInput.value.trim();
+		const filePath = await this.getCompanyInfoFilePath();
+		try {
+			await this.fileService.writeFile(filePath, VSBuffer.fromString(JSON.stringify(this.companyInfo, null, 2)));
+			this.notificationService.info(localize('pm.companyInfo.saveSuccess', "Company info saved to TNE-CONTEXT/company-info.json."));
+			this.companyNameDisplay.textContent = this.companyInfo.name;
+			this.industryDisplay.textContent = this.companyInfo.industry;
+			this.toggleEditMode('name', false);
+			this.toggleEditMode('industry', false);
+		} catch (error) {
+			this.notificationService.error(localize('pm.companyInfo.saveError', "Failed to save company-info.json: {0}", (error as any).message));
+		}
+	}
+
+	private toggleEditMode(field: 'name' | 'industry', enable: boolean): void {
+		if (field === 'name') {
+			if (enable) {
+				this.companyNameDisplay.classList.add('ceo-hidden');
+				this.companyNameInput.classList.remove('ceo-hidden');
+				this.companyNameInput.focus();
+			} else {
+				this.companyNameDisplay.classList.remove('ceo-hidden');
+				this.companyNameInput.classList.add('ceo-hidden');
+			}
+		} else {
+			if (enable) {
+				this.industryDisplay.classList.add('ceo-hidden');
+				this.industryInput.classList.remove('ceo-hidden');
+				this.industryInput.focus();
+			} else {
+				this.industryDisplay.classList.remove('ceo-hidden');
+				this.industryInput.classList.add('ceo-hidden');
+			}
+		}
 	}
 
 	private async updateReportChecklist(): Promise<void> {
@@ -2958,8 +3044,15 @@ const DOCS_VIEW_ID = 'workbench.view.docsView';
 class DocsView extends ViewPane {
 	static readonly ID = DOCS_VIEW_ID;
 
+	private companyNameInput!: HTMLInputElement;
+	private industryInput!: HTMLInputElement;
+	private companyNameDisplay!: HTMLElement;
+	private industryDisplay!: HTMLElement;
+
 	private reportChecklist!: HTMLElement;
 	private contentContainer!: HTMLElement;
+
+	private companyInfo: { name: string; industry: string } = { name: '', industry: '' };
 
 	constructor(
 		options: IViewPaneOptions,
@@ -2982,6 +3075,7 @@ class DocsView extends ViewPane {
 			keybindingService, contextMenuService, configurationService, contextKeyService, viewDescriptorService,
 			instantiationService, openerService, themeService, hoverService
 		);
+		this._register(this.onDidChangeBodyVisibility(() => this.onBodyVisibilityChange()));
 	}
 
 	protected override renderBody(parent: HTMLElement): void {
@@ -2993,6 +3087,47 @@ class DocsView extends ViewPane {
 		} else {
 			while (this.contentContainer.firstChild) { this.contentContainer.removeChild(this.contentContainer.firstChild); }
 		}
+
+		// Company Info Section
+		const companyInfoSection = document.createElement('div');
+		companyInfoSection.className = 'ceo-company-info-section';
+		this.contentContainer.appendChild(companyInfoSection);
+
+		const companyLabel = document.createElement('label');
+		companyLabel.textContent = localize('docs.companyLabel', "Company");
+		companyLabel.className = 'ceo-info-label';
+		companyInfoSection.appendChild(companyLabel);
+
+		this.companyNameDisplay = document.createElement('h1');
+		this.companyNameDisplay.className = 'ceo-company-name-display';
+		this.companyNameDisplay.addEventListener('dblclick', () => this.toggleEditMode('name', true));
+		companyInfoSection.appendChild(this.companyNameDisplay);
+
+		this.companyNameInput = document.createElement('input');
+		this.companyNameInput.type = 'text';
+		this.companyNameInput.placeholder = localize('docs.companyNamePlaceholder', "Enter company name");
+		this.companyNameInput.className = 'ceo-input ceo-hidden';
+		this.companyNameInput.addEventListener('change', () => this.saveCompanyInfo());
+		this.companyNameInput.addEventListener('blur', () => this.toggleEditMode('name', false));
+		companyInfoSection.appendChild(this.companyNameInput);
+
+		const industryLabel = document.createElement('label');
+		industryLabel.textContent = localize('docs.industryLabel', "Industry");
+		industryLabel.className = 'ceo-info-label';
+		companyInfoSection.appendChild(industryLabel);
+
+		this.industryDisplay = document.createElement('h2');
+		this.industryDisplay.className = 'ceo-industry-display';
+		this.industryDisplay.addEventListener('dblclick', () => this.toggleEditMode('industry', true));
+		companyInfoSection.appendChild(this.industryDisplay);
+
+		this.industryInput = document.createElement('input');
+		this.industryInput.type = 'text';
+		this.industryInput.placeholder = localize('docs.industryPlaceholder', "Enter industry");
+		this.industryInput.className = 'ceo-input ceo-hidden';
+		this.industryInput.addEventListener('change', () => this.saveCompanyInfo());
+		this.industryInput.addEventListener('blur', () => this.toggleEditMode('industry', false));
+		companyInfoSection.appendChild(this.industryInput);
 
 		const reportsSection = document.createElement('div');
 		reportsSection.className = 'ceo-reports-section';
@@ -3007,7 +3142,83 @@ class DocsView extends ViewPane {
 		this.reportChecklist.className = 'ceo-report-checklist';
 		reportsSection.appendChild(this.reportChecklist);
 
+		this.loadCompanyInfo();
 		this.updateReportChecklist();
+	}
+
+	private onBodyVisibilityChange(): void {
+		if (this.isBodyVisible()) {
+			this.loadCompanyInfo();
+			this.updateReportChecklist();
+		}
+	}
+
+	private async getCompanyInfoFilePath(): Promise<URI> {
+		const tne = await this.getTNEContextPath();
+		return joinPath(tne, 'company-info.json');
+	}
+
+
+	private async loadCompanyInfo(): Promise<void> {
+		const filePath = await this.getCompanyInfoFilePath();
+		try {
+			const content = await this.fileService.readFile(filePath);
+			this.companyInfo = JSON.parse(content.value.toString());
+			this.companyNameInput.value = this.companyInfo.name;
+			this.industryInput.value = this.companyInfo.industry;
+
+			this.companyNameDisplay.textContent = this.companyInfo.name;
+			this.industryDisplay.textContent = this.companyInfo.industry;
+			this.toggleEditMode('name', false);
+			this.toggleEditMode('industry', false);
+		} catch (error) {
+			if ((error as any).fileOperationResult === 1 /* FILE_NOT_FOUND */) {
+				this.companyInfo = { name: '', industry: '' };
+				this.companyNameInput.value = '';
+				this.industryInput.value = '';
+				this.toggleEditMode('name', true);
+				this.toggleEditMode('industry', true);
+			} else {
+				this.notificationService.error(localize('docs.companyInfo.loadError', "Failed to load company-info.json: {0}", (error as any).message));
+			}
+		}
+	}
+
+	private async saveCompanyInfo(): Promise<void> {
+		this.companyInfo.name = this.companyNameInput.value.trim();
+		this.companyInfo.industry = this.industryInput.value.trim();
+		const filePath = await this.getCompanyInfoFilePath();
+		try {
+			await this.fileService.writeFile(filePath, VSBuffer.fromString(JSON.stringify(this.companyInfo, null, 2)));
+			this.companyNameDisplay.textContent = this.companyInfo.name;
+			this.industryDisplay.textContent = this.companyInfo.industry;
+			this.toggleEditMode('name', false);
+			this.toggleEditMode('industry', false);
+		} catch (error) {
+			this.notificationService.error(localize('docs.companyInfo.saveError', "Failed to save company-info.json: {0}", (error as any).message));
+		}
+	}
+
+	private toggleEditMode(field: 'name' | 'industry', enable: boolean): void {
+		if (field === 'name') {
+			if (enable) {
+				this.companyNameDisplay.classList.add('ceo-hidden');
+				this.companyNameInput.classList.remove('ceo-hidden');
+				this.companyNameInput.focus();
+			} else {
+				this.companyNameDisplay.classList.remove('ceo-hidden');
+				this.companyNameInput.classList.add('ceo-hidden');
+			}
+		} else {
+			if (enable) {
+				this.industryDisplay.classList.add('ceo-hidden');
+				this.industryInput.classList.remove('ceo-hidden');
+				this.industryInput.focus();
+			} else {
+				this.industryDisplay.classList.remove('ceo-hidden');
+				this.industryInput.classList.add('ceo-hidden');
+			}
+		}
 	}
 
 	private async getTNEContextPath(): Promise<URI> {
@@ -3090,7 +3301,7 @@ const docsViewContainer = Registry.as<IViewContainersRegistry>(ViewExtensions.Vi
 		ctorDescriptor: new SyncDescriptor(ViewPaneContainer, [DOCS_VIEW_CONTAINER_ID, { mergeViewWithContainerWhenSingleView: true }]),
 		icon: Codicon.book,
 		storageId: DOCS_VIEW_CONTAINER_ID,
-		order: 6
+		order: 5
 	},
 	ViewContainerLocation.Sidebar
 );
@@ -3112,8 +3323,15 @@ const IP_VIEW_ID = 'workbench.view.ipView';
 class IPView extends ViewPane {
 	static readonly ID = IP_VIEW_ID;
 
+	private companyNameInput!: HTMLInputElement;
+	private industryInput!: HTMLInputElement;
+	private companyNameDisplay!: HTMLElement;
+	private industryDisplay!: HTMLElement;
+
 	private reportChecklist!: HTMLElement;
 	private contentContainer!: HTMLElement;
+
+	private companyInfo: { name: string; industry: string } = { name: '', industry: '' };
 
 	constructor(
 		options: IViewPaneOptions,
@@ -3136,6 +3354,7 @@ class IPView extends ViewPane {
 			keybindingService, contextMenuService, configurationService, contextKeyService, viewDescriptorService,
 			instantiationService, openerService, themeService, hoverService
 		);
+		this._register(this.onDidChangeBodyVisibility(() => this.onBodyVisibilityChange()));
 	}
 
 	protected override renderBody(parent: HTMLElement): void {
@@ -3147,6 +3366,47 @@ class IPView extends ViewPane {
 		} else {
 			while (this.contentContainer.firstChild) { this.contentContainer.removeChild(this.contentContainer.firstChild); }
 		}
+
+		// Company Info
+		const companyInfoSection = document.createElement('div');
+		companyInfoSection.className = 'ceo-company-info-section';
+		this.contentContainer.appendChild(companyInfoSection);
+
+		const companyLabel = document.createElement('label');
+		companyLabel.textContent = localize('ip.companyLabel', "Company");
+		companyLabel.className = 'ceo-info-label';
+		companyInfoSection.appendChild(companyLabel);
+
+		this.companyNameDisplay = document.createElement('h1');
+		this.companyNameDisplay.className = 'ceo-company-name-display';
+		this.companyNameDisplay.addEventListener('dblclick', () => this.toggleEditMode('name', true));
+		companyInfoSection.appendChild(this.companyNameDisplay);
+
+		this.companyNameInput = document.createElement('input');
+		this.companyNameInput.type = 'text';
+		this.companyNameInput.placeholder = localize('ip.companyNamePlaceholder', "Enter company name");
+		this.companyNameInput.className = 'ceo-input ceo-hidden';
+		this.companyNameInput.addEventListener('change', () => this.saveCompanyInfo());
+		this.companyNameInput.addEventListener('blur', () => this.toggleEditMode('name', false));
+		companyInfoSection.appendChild(this.companyNameInput);
+
+		const industryLabel = document.createElement('label');
+		industryLabel.textContent = localize('ip.industryLabel', "Industry");
+		industryLabel.className = 'ceo-info-label';
+		companyInfoSection.appendChild(industryLabel);
+
+		this.industryDisplay = document.createElement('h2');
+		this.industryDisplay.className = 'ceo-industry-display';
+		this.industryDisplay.addEventListener('dblclick', () => this.toggleEditMode('industry', true));
+		companyInfoSection.appendChild(this.industryDisplay);
+
+		this.industryInput = document.createElement('input');
+		this.industryInput.type = 'text';
+		this.industryInput.placeholder = localize('ip.industryPlaceholder', "Enter industry");
+		this.industryInput.className = 'ceo-input ceo-hidden';
+		this.industryInput.addEventListener('change', () => this.saveCompanyInfo());
+		this.industryInput.addEventListener('blur', () => this.toggleEditMode('industry', false));
+		companyInfoSection.appendChild(this.industryInput);
 
 		const reportsSection = document.createElement('div');
 		reportsSection.className = 'ceo-reports-section';
@@ -3161,7 +3421,83 @@ class IPView extends ViewPane {
 		this.reportChecklist.className = 'ceo-report-checklist';
 		reportsSection.appendChild(this.reportChecklist);
 
+		this.loadCompanyInfo();
 		this.updateReportChecklist();
+	}
+
+	private onBodyVisibilityChange(): void {
+		if (this.isBodyVisible()) {
+			this.loadCompanyInfo();
+			this.updateReportChecklist();
+		}
+	}
+
+	private async getCompanyInfoFilePath(): Promise<URI> {
+		const tne = await this.getTNEContextPath();
+		return joinPath(tne, 'company-info.json');
+	}
+
+
+	private async loadCompanyInfo(): Promise<void> {
+		const filePath = await this.getCompanyInfoFilePath();
+		try {
+			const content = await this.fileService.readFile(filePath);
+			this.companyInfo = JSON.parse(content.value.toString());
+			this.companyNameInput.value = this.companyInfo.name;
+			this.industryInput.value = this.companyInfo.industry;
+
+			this.companyNameDisplay.textContent = this.companyInfo.name;
+			this.industryDisplay.textContent = this.companyInfo.industry;
+			this.toggleEditMode('name', false);
+			this.toggleEditMode('industry', false);
+		} catch (error) {
+			if ((error as any).fileOperationResult === 1 /* FILE_NOT_FOUND */) {
+				this.companyInfo = { name: '', industry: '' };
+				this.companyNameInput.value = '';
+				this.industryInput.value = '';
+				this.toggleEditMode('name', true);
+				this.toggleEditMode('industry', true);
+			} else {
+				this.notificationService.error(localize('ip.companyInfo.loadError', "Failed to load company-info.json: {0}", (error as any).message));
+			}
+		}
+	}
+
+	private async saveCompanyInfo(): Promise<void> {
+		this.companyInfo.name = this.companyNameInput.value.trim();
+		this.companyInfo.industry = this.industryInput.value.trim();
+		const filePath = await this.getCompanyInfoFilePath();
+		try {
+			await this.fileService.writeFile(filePath, VSBuffer.fromString(JSON.stringify(this.companyInfo, null, 2)));
+			this.companyNameDisplay.textContent = this.companyInfo.name;
+			this.industryDisplay.textContent = this.companyInfo.industry;
+			this.toggleEditMode('name', false);
+			this.toggleEditMode('industry', false);
+		} catch (error) {
+			this.notificationService.error(localize('ip.companyInfo.saveError', "Failed to save company-info.json: {0}", (error as any).message));
+		}
+	}
+
+	private toggleEditMode(field: 'name' | 'industry', enable: boolean): void {
+		if (field === 'name') {
+			if (enable) {
+				this.companyNameDisplay.classList.add('ceo-hidden');
+				this.companyNameInput.classList.remove('ceo-hidden');
+				this.companyNameInput.focus();
+			} else {
+				this.companyNameDisplay.classList.remove('ceo-hidden');
+				this.companyNameInput.classList.add('ceo-hidden');
+			}
+		} else {
+			if (enable) {
+				this.industryDisplay.classList.add('ceo-hidden');
+				this.industryInput.classList.remove('ceo-hidden');
+				this.industryInput.focus();
+			} else {
+				this.industryDisplay.classList.remove('ceo-hidden');
+				this.industryInput.classList.add('ceo-hidden');
+			}
+		}
 	}
 
 	private async getTNEContextPath(): Promise<URI> {
@@ -3242,7 +3578,7 @@ const ipViewContainer = Registry.as<IViewContainersRegistry>(ViewExtensions.View
 		ctorDescriptor: new SyncDescriptor(ViewPaneContainer, [IP_VIEW_CONTAINER_ID, { mergeViewWithContainerWhenSingleView: true }]),
 		icon: Codicon.law,
 		storageId: IP_VIEW_CONTAINER_ID,
-		order: 7
+		order: 6
 	},
 	ViewContainerLocation.Sidebar
 );
@@ -3263,8 +3599,16 @@ const P_VIEW_ID = 'workbench.view.presentationView';
 
 class PresentationView extends ViewPane {
 	static readonly ID = P_VIEW_ID;
+
+	private companyNameInput!: HTMLInputElement;
+	private industryInput!: HTMLInputElement;
+	private companyNameDisplay!: HTMLElement;
+	private industryDisplay!: HTMLElement;
+
 	private reportChecklist!: HTMLElement;
 	private contentContainer!: HTMLElement;
+
+	private companyInfo: { name: string; industry: string } = { name: '', industry: '' };
 
 	constructor(
 		options: IViewPaneOptions,
@@ -3287,6 +3631,7 @@ class PresentationView extends ViewPane {
 			keybindingService, contextMenuService, configurationService, contextKeyService, viewDescriptorService,
 			instantiationService, openerService, themeService, hoverService
 		);
+		this._register(this.onDidChangeBodyVisibility(() => this.onBodyVisibilityChange()));
 	}
 
 	protected override renderBody(parent: HTMLElement): void {
@@ -3298,6 +3643,47 @@ class PresentationView extends ViewPane {
 		} else {
 			while (this.contentContainer.firstChild) { this.contentContainer.removeChild(this.contentContainer.firstChild); }
 		}
+
+		// Company Info
+		const companyInfoSection = document.createElement('div');
+		companyInfoSection.className = 'ceo-company-info-section';
+		this.contentContainer.appendChild(companyInfoSection);
+
+		const companyLabel = document.createElement('label');
+		companyLabel.textContent = localize('p.companyLabel', "Company");
+		companyLabel.className = 'ceo-info-label';
+		companyInfoSection.appendChild(companyLabel);
+
+		this.companyNameDisplay = document.createElement('h1');
+		this.companyNameDisplay.className = 'ceo-company-name-display';
+		this.companyNameDisplay.addEventListener('dblclick', () => this.toggleEditMode('name', true));
+		companyInfoSection.appendChild(this.companyNameDisplay);
+
+		this.companyNameInput = document.createElement('input');
+		this.companyNameInput.type = 'text';
+		this.companyNameInput.placeholder = localize('p.companyNamePlaceholder', "Enter company name");
+		this.companyNameInput.className = 'ceo-input ceo-hidden';
+		this.companyNameInput.addEventListener('change', () => this.saveCompanyInfo());
+		this.companyNameInput.addEventListener('blur', () => this.toggleEditMode('name', false));
+		companyInfoSection.appendChild(this.companyNameInput);
+
+		const industryLabel = document.createElement('label');
+		industryLabel.textContent = localize('p.industryLabel', "Industry");
+		industryLabel.className = 'ceo-info-label';
+		companyInfoSection.appendChild(industryLabel);
+
+		this.industryDisplay = document.createElement('h2');
+		this.industryDisplay.className = 'ceo-industry-display';
+		this.industryDisplay.addEventListener('dblclick', () => this.toggleEditMode('industry', true));
+		companyInfoSection.appendChild(this.industryDisplay);
+
+		this.industryInput = document.createElement('input');
+		this.industryInput.type = 'text';
+		this.industryInput.placeholder = localize('p.industryPlaceholder', "Enter industry");
+		this.industryInput.className = 'ceo-input ceo-hidden';
+		this.industryInput.addEventListener('change', () => this.saveCompanyInfo());
+		this.industryInput.addEventListener('blur', () => this.toggleEditMode('industry', false));
+		companyInfoSection.appendChild(this.industryInput);
 
 		const reportsSection = document.createElement('div');
 		reportsSection.className = 'ceo-reports-section';
@@ -3312,13 +3698,89 @@ class PresentationView extends ViewPane {
 		this.reportChecklist.className = 'ceo-report-checklist';
 		reportsSection.appendChild(this.reportChecklist);
 
+		this.loadCompanyInfo();
 		this.updateReportChecklist();
+	}
+
+	private onBodyVisibilityChange(): void {
+		if (this.isBodyVisible()) {
+			this.loadCompanyInfo();
+			this.updateReportChecklist();
+		}
+	}
+
+	private async getCompanyInfoFilePath(): Promise<URI> {
+		const tne = await this.getTNEContextPath();
+		return joinPath(tne, 'company-info.json');
 	}
 
 	private async getTNEContextPath(): Promise<URI> {
 		const workspaceFolders = this.workspaceContextService.getWorkspace().folders;
 		return workspaceFolders.length > 0 ? joinPath(workspaceFolders[0].uri, 'TNE-CONTEXT') : URI.file('/tmp/TNE-CONTEXT');
 	}
+
+	private async loadCompanyInfo(): Promise<void> {
+		const filePath = await this.getCompanyInfoFilePath();
+		try {
+			const content = await this.fileService.readFile(filePath);
+			this.companyInfo = JSON.parse(content.value.toString());
+			this.companyNameInput.value = this.companyInfo.name;
+			this.industryInput.value = this.companyInfo.industry;
+
+			this.companyNameDisplay.textContent = this.companyInfo.name;
+			this.industryDisplay.textContent = this.companyInfo.industry;
+			this.toggleEditMode('name', false);
+			this.toggleEditMode('industry', false);
+		} catch (error) {
+			if ((error as any).fileOperationResult === 1 /* FILE_NOT_FOUND */) {
+				this.companyInfo = { name: '', industry: '' };
+				this.companyNameInput.value = '';
+				this.industryInput.value = '';
+				this.toggleEditMode('name', true);
+				this.toggleEditMode('industry', true);
+			} else {
+				this.notificationService.error(localize('p.companyInfo.loadError', "Failed to load company-info.json: {0}", (error as any).message));
+			}
+		}
+	}
+
+	private async saveCompanyInfo(): Promise<void> {
+		this.companyInfo.name = this.companyNameInput.value.trim();
+		this.companyInfo.industry = this.industryInput.value.trim();
+		const filePath = await this.getCompanyInfoFilePath();
+		try {
+			await this.fileService.writeFile(filePath, VSBuffer.fromString(JSON.stringify(this.companyInfo, null, 2)));
+			this.companyNameDisplay.textContent = this.companyInfo.name;
+			this.industryDisplay.textContent = this.companyInfo.industry;
+			this.toggleEditMode('name', false);
+			this.toggleEditMode('industry', false);
+		} catch (error) {
+			this.notificationService.error(localize('p.companyInfo.saveError', "Failed to save company-info.json: {0}", (error as any).message));
+		}
+	}
+
+	private toggleEditMode(field: 'name' | 'industry', enable: boolean): void {
+		if (field === 'name') {
+			if (enable) {
+				this.companyNameDisplay.classList.add('ceo-hidden');
+				this.companyNameInput.classList.remove('ceo-hidden');
+				this.companyNameInput.focus();
+			} else {
+				this.companyNameDisplay.classList.remove('ceo-hidden');
+				this.companyNameInput.classList.add('ceo-hidden');
+			}
+		} else {
+			if (enable) {
+				this.industryDisplay.classList.add('ceo-hidden');
+				this.industryInput.classList.remove('ceo-hidden');
+				this.industryInput.focus();
+			} else {
+				this.industryDisplay.classList.remove('ceo-hidden');
+				this.industryInput.classList.add('ceo-hidden');
+			}
+		}
+	}
+
 
 	private async updateReportChecklist(): Promise<void> {
 		while (this.reportChecklist.firstChild) { this.reportChecklist.removeChild(this.reportChecklist.firstChild); }
@@ -3389,7 +3851,7 @@ const pViewContainer = Registry.as<IViewContainersRegistry>(ViewExtensions.ViewC
 		ctorDescriptor: new SyncDescriptor(ViewPaneContainer, [P_VIEW_CONTAINER_ID, { mergeViewWithContainerWhenSingleView: true }]),
 		icon: Codicon.mic,
 		storageId: P_VIEW_CONTAINER_ID,
-		order: 8
+		order: 7
 	},
 	ViewContainerLocation.Sidebar
 );
@@ -3410,8 +3872,16 @@ const CODING_VIEW_ID = 'workbench.view.codingView';
 
 class CodingView extends ViewPane {
 	static readonly ID = CODING_VIEW_ID;
+
+	private companyNameInput!: HTMLInputElement;
+	private industryInput!: HTMLInputElement;
+	private companyNameDisplay!: HTMLElement;
+	private industryDisplay!: HTMLElement;
+
 	private reportChecklist!: HTMLElement;
 	private contentContainer!: HTMLElement;
+
+	private companyInfo: { name: string; industry: string } = { name: '', industry: '' };
 
 	constructor(
 		options: IViewPaneOptions,
@@ -3434,6 +3904,7 @@ class CodingView extends ViewPane {
 			keybindingService, contextMenuService, configurationService, contextKeyService, viewDescriptorService,
 			instantiationService, openerService, themeService, hoverService
 		);
+		this._register(this.onDidChangeBodyVisibility(() => this.onBodyVisibilityChange()));
 	}
 
 	protected override renderBody(parent: HTMLElement): void {
@@ -3445,6 +3916,47 @@ class CodingView extends ViewPane {
 		} else {
 			while (this.contentContainer.firstChild) { this.contentContainer.removeChild(this.contentContainer.firstChild); }
 		}
+
+		// Company Info
+		const companyInfoSection = document.createElement('div');
+		companyInfoSection.className = 'ceo-company-info-section';
+		this.contentContainer.appendChild(companyInfoSection);
+
+		const companyLabel = document.createElement('label');
+		companyLabel.textContent = localize('coding.companyLabel', "Company");
+		companyLabel.className = 'ceo-info-label';
+		companyInfoSection.appendChild(companyLabel);
+
+		this.companyNameDisplay = document.createElement('h1');
+		this.companyNameDisplay.className = 'ceo-company-name-display';
+		this.companyNameDisplay.addEventListener('dblclick', () => this.toggleEditMode('name', true));
+		companyInfoSection.appendChild(this.companyNameDisplay);
+
+		this.companyNameInput = document.createElement('input');
+		this.companyNameInput.type = 'text';
+		this.companyNameInput.placeholder = localize('coding.companyNamePlaceholder', "Enter company name");
+		this.companyNameInput.className = 'ceo-input ceo-hidden';
+		this.companyNameInput.addEventListener('change', () => this.saveCompanyInfo());
+		this.companyNameInput.addEventListener('blur', () => this.toggleEditMode('name', false));
+		companyInfoSection.appendChild(this.companyNameInput);
+
+		const industryLabel = document.createElement('label');
+		industryLabel.textContent = localize('coding.industryLabel', "Industry");
+		industryLabel.className = 'ceo-info-label';
+		companyInfoSection.appendChild(industryLabel);
+
+		this.industryDisplay = document.createElement('h2');
+		this.industryDisplay.className = 'ceo-industry-display';
+		this.industryDisplay.addEventListener('dblclick', () => this.toggleEditMode('industry', true));
+		companyInfoSection.appendChild(this.industryDisplay);
+
+		this.industryInput = document.createElement('input');
+		this.industryInput.type = 'text';
+		this.industryInput.placeholder = localize('coding.industryPlaceholder', "Enter industry");
+		this.industryInput.className = 'ceo-input ceo-hidden';
+		this.industryInput.addEventListener('change', () => this.saveCompanyInfo());
+		this.industryInput.addEventListener('blur', () => this.toggleEditMode('industry', false));
+		companyInfoSection.appendChild(this.industryInput);
 
 		const reportsSection = document.createElement('div');
 		reportsSection.className = 'ceo-reports-section';
@@ -3459,13 +3971,89 @@ class CodingView extends ViewPane {
 		this.reportChecklist.className = 'ceo-report-checklist';
 		reportsSection.appendChild(this.reportChecklist);
 
+		this.loadCompanyInfo();
 		this.updateReportChecklist();
+	}
+
+	private onBodyVisibilityChange(): void {
+		if (this.isBodyVisible()) {
+			this.loadCompanyInfo();
+			this.updateReportChecklist();
+		}
+	}
+
+	private async getCompanyInfoFilePath(): Promise<URI> {
+		const tne = await this.getTNEContextPath();
+		return joinPath(tne, 'company-info.json');
 	}
 
 	private async getTNEContextPath(): Promise<URI> {
 		const workspaceFolders = this.workspaceContextService.getWorkspace().folders;
 		return workspaceFolders.length > 0 ? joinPath(workspaceFolders[0].uri, 'TNE-CONTEXT') : URI.file('/tmp/TNE-CONTEXT');
 	}
+
+	private async loadCompanyInfo(): Promise<void> {
+		const filePath = await this.getCompanyInfoFilePath();
+		try {
+			const content = await this.fileService.readFile(filePath);
+			this.companyInfo = JSON.parse(content.value.toString());
+			this.companyNameInput.value = this.companyInfo.name;
+			this.industryInput.value = this.companyInfo.industry;
+
+			this.companyNameDisplay.textContent = this.companyInfo.name;
+			this.industryDisplay.textContent = this.companyInfo.industry;
+			this.toggleEditMode('name', false);
+			this.toggleEditMode('industry', false);
+		} catch (error) {
+			if ((error as any).fileOperationResult === 1 /* FILE_NOT_FOUND */) {
+				this.companyInfo = { name: '', industry: '' };
+				this.companyNameInput.value = '';
+				this.industryInput.value = '';
+				this.toggleEditMode('name', true);
+				this.toggleEditMode('industry', true);
+			} else {
+				this.notificationService.error(localize('coding.companyInfo.loadError', "Failed to load company-info.json: {0}", (error as any).message));
+			}
+		}
+	}
+
+	private async saveCompanyInfo(): Promise<void> {
+		this.companyInfo.name = this.companyNameInput.value.trim();
+		this.companyInfo.industry = this.industryInput.value.trim();
+		const filePath = await this.getCompanyInfoFilePath();
+		try {
+			await this.fileService.writeFile(filePath, VSBuffer.fromString(JSON.stringify(this.companyInfo, null, 2)));
+			this.companyNameDisplay.textContent = this.companyInfo.name;
+			this.industryDisplay.textContent = this.companyInfo.industry;
+			this.toggleEditMode('name', false);
+			this.toggleEditMode('industry', false);
+		} catch (error) {
+			this.notificationService.error(localize('coding.companyInfo.saveError', "Failed to save company-info.json: {0}", (error as any).message));
+		}
+	}
+
+	private toggleEditMode(field: 'name' | 'industry', enable: boolean): void {
+		if (field === 'name') {
+			if (enable) {
+				this.companyNameDisplay.classList.add('ceo-hidden');
+				this.companyNameInput.classList.remove('ceo-hidden');
+				this.companyNameInput.focus();
+			} else {
+				this.companyNameDisplay.classList.remove('ceo-hidden');
+				this.companyNameInput.classList.add('ceo-hidden');
+			}
+		} else {
+			if (enable) {
+				this.industryDisplay.classList.add('ceo-hidden');
+				this.industryInput.classList.remove('ceo-hidden');
+				this.industryInput.focus();
+			} else {
+				this.industryDisplay.classList.remove('ceo-hidden');
+				this.industryInput.classList.add('ceo-hidden');
+			}
+		}
+	}
+
 
 	private async updateReportChecklist(): Promise<void> {
 		while (this.reportChecklist.firstChild) { this.reportChecklist.removeChild(this.reportChecklist.firstChild); }
@@ -3538,7 +4126,7 @@ const codingViewContainer = Registry.as<IViewContainersRegistry>(ViewExtensions.
 		ctorDescriptor: new SyncDescriptor(ViewPaneContainer, [CODING_VIEW_CONTAINER_ID, { mergeViewWithContainerWhenSingleView: true }]),
 		icon: Codicon.code,
 		storageId: CODING_VIEW_CONTAINER_ID,
-		order: 9
+		order: 8
 	},
 	ViewContainerLocation.Sidebar
 );
