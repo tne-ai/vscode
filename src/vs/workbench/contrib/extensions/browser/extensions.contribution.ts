@@ -2147,6 +2147,7 @@ class CEOView extends ViewPane {
 		this.companyNameDisplay = document.createElement('h1');
 		this.companyNameDisplay.className = 'ceo-company-name-display';
 		this.companyNameDisplay.addEventListener('dblclick', () => this.toggleEditMode('name', true));
+		this.companyNameDisplay.addEventListener('click', () => this.toggleEditMode('name', true));
 		companyInfoSection.appendChild(this.companyNameDisplay);
 
 		this.companyNameInput = document.createElement('input');
@@ -2166,6 +2167,7 @@ class CEOView extends ViewPane {
 		this.industryDisplay = document.createElement('h2');
 		this.industryDisplay.className = 'ceo-industry-display';
 		this.industryDisplay.addEventListener('dblclick', () => this.toggleEditMode('industry', true));
+		this.industryDisplay.addEventListener('click', () => this.toggleEditMode('industry', true));
 		companyInfoSection.appendChild(this.industryDisplay);
 
 		this.industryInput = document.createElement('input');
@@ -2510,6 +2512,7 @@ class CIOView extends ViewPane {
 		this.companyNameDisplay = document.createElement('h1');
 		this.companyNameDisplay.className = 'ceo-company-name-display';
 		this.companyNameDisplay.addEventListener('dblclick', () => this.toggleEditMode('name', true));
+		this.companyNameDisplay.addEventListener('click', () => this.toggleEditMode('name', true));
 		companyInfoSection.appendChild(this.companyNameDisplay);
 
 		this.companyNameInput = document.createElement('input');
@@ -2528,6 +2531,7 @@ class CIOView extends ViewPane {
 		this.industryDisplay = document.createElement('h2');
 		this.industryDisplay.className = 'ceo-industry-display';
 		this.industryDisplay.addEventListener('dblclick', () => this.toggleEditMode('industry', true));
+		this.industryDisplay.addEventListener('click', () => this.toggleEditMode('industry', true));
 		companyInfoSection.appendChild(this.industryDisplay);
 
 		this.industryInput = document.createElement('input');
@@ -2822,6 +2826,7 @@ class PMView extends ViewPane {
 		this.companyNameDisplay = document.createElement('h1');
 		this.companyNameDisplay.className = 'ceo-company-name-display';
 		this.companyNameDisplay.addEventListener('dblclick', () => this.toggleEditMode('name', true));
+		this.companyNameDisplay.addEventListener('click', () => this.toggleEditMode('name', true));
 		companyInfoSection.appendChild(this.companyNameDisplay);
 
 		this.companyNameInput = document.createElement('input');
@@ -2840,6 +2845,7 @@ class PMView extends ViewPane {
 		this.industryDisplay = document.createElement('h2');
 		this.industryDisplay.className = 'ceo-industry-display';
 		this.industryDisplay.addEventListener('dblclick', () => this.toggleEditMode('industry', true));
+		this.industryDisplay.addEventListener('click', () => this.toggleEditMode('industry', true));
 		companyInfoSection.appendChild(this.industryDisplay);
 
 		this.industryInput = document.createElement('input');
@@ -3101,6 +3107,7 @@ class DocsView extends ViewPane {
 		this.companyNameDisplay = document.createElement('h1');
 		this.companyNameDisplay.className = 'ceo-company-name-display';
 		this.companyNameDisplay.addEventListener('dblclick', () => this.toggleEditMode('name', true));
+		this.companyNameDisplay.addEventListener('click', () => this.toggleEditMode('name', true));
 		companyInfoSection.appendChild(this.companyNameDisplay);
 
 		this.companyNameInput = document.createElement('input');
@@ -3119,6 +3126,7 @@ class DocsView extends ViewPane {
 		this.industryDisplay = document.createElement('h2');
 		this.industryDisplay.className = 'ceo-industry-display';
 		this.industryDisplay.addEventListener('dblclick', () => this.toggleEditMode('industry', true));
+		this.industryDisplay.addEventListener('click', () => this.toggleEditMode('industry', true));
 		companyInfoSection.appendChild(this.industryDisplay);
 
 		this.industryInput = document.createElement('input');
@@ -3380,6 +3388,7 @@ class IPView extends ViewPane {
 		this.companyNameDisplay = document.createElement('h1');
 		this.companyNameDisplay.className = 'ceo-company-name-display';
 		this.companyNameDisplay.addEventListener('dblclick', () => this.toggleEditMode('name', true));
+		this.companyNameDisplay.addEventListener('click', () => this.toggleEditMode('name', true));
 		companyInfoSection.appendChild(this.companyNameDisplay);
 
 		this.companyNameInput = document.createElement('input');
@@ -3398,6 +3407,7 @@ class IPView extends ViewPane {
 		this.industryDisplay = document.createElement('h2');
 		this.industryDisplay.className = 'ceo-industry-display';
 		this.industryDisplay.addEventListener('dblclick', () => this.toggleEditMode('industry', true));
+		this.industryDisplay.addEventListener('click', () => this.toggleEditMode('industry', true));
 		companyInfoSection.appendChild(this.industryDisplay);
 
 		this.industryInput = document.createElement('input');
@@ -3657,6 +3667,7 @@ class PresentationView extends ViewPane {
 		this.companyNameDisplay = document.createElement('h1');
 		this.companyNameDisplay.className = 'ceo-company-name-display';
 		this.companyNameDisplay.addEventListener('dblclick', () => this.toggleEditMode('name', true));
+		this.companyNameDisplay.addEventListener('click', () => this.toggleEditMode('name', true));
 		companyInfoSection.appendChild(this.companyNameDisplay);
 
 		this.companyNameInput = document.createElement('input');
@@ -3675,6 +3686,7 @@ class PresentationView extends ViewPane {
 		this.industryDisplay = document.createElement('h2');
 		this.industryDisplay.className = 'ceo-industry-display';
 		this.industryDisplay.addEventListener('dblclick', () => this.toggleEditMode('industry', true));
+		this.industryDisplay.addEventListener('click', () => this.toggleEditMode('industry', true));
 		companyInfoSection.appendChild(this.industryDisplay);
 
 		this.industryInput = document.createElement('input');
@@ -3930,6 +3942,7 @@ class CodingView extends ViewPane {
 		this.companyNameDisplay = document.createElement('h1');
 		this.companyNameDisplay.className = 'ceo-company-name-display';
 		this.companyNameDisplay.addEventListener('dblclick', () => this.toggleEditMode('name', true));
+		this.companyNameDisplay.addEventListener('click', () => this.toggleEditMode('name', true));
 		companyInfoSection.appendChild(this.companyNameDisplay);
 
 		this.companyNameInput = document.createElement('input');
@@ -3948,6 +3961,7 @@ class CodingView extends ViewPane {
 		this.industryDisplay = document.createElement('h2');
 		this.industryDisplay.className = 'ceo-industry-display';
 		this.industryDisplay.addEventListener('dblclick', () => this.toggleEditMode('industry', true));
+		this.industryDisplay.addEventListener('click', () => this.toggleEditMode('industry', true));
 		companyInfoSection.appendChild(this.industryDisplay);
 
 		this.industryInput = document.createElement('input');
@@ -4224,6 +4238,7 @@ class CTOView extends ViewPane {
 		this.companyNameDisplay = document.createElement('h1');
 		this.companyNameDisplay.className = 'ceo-company-name-display';
 		this.companyNameDisplay.addEventListener('dblclick', () => this.toggleEditMode('name', true));
+		this.companyNameDisplay.addEventListener('click', () => this.toggleEditMode('name', true));
 		companyInfoSection.appendChild(this.companyNameDisplay);
 
 		this.companyNameInput = document.createElement('input');
@@ -4242,6 +4257,7 @@ class CTOView extends ViewPane {
 		this.industryDisplay = document.createElement('h2');
 		this.industryDisplay.className = 'ceo-industry-display';
 		this.industryDisplay.addEventListener('dblclick', () => this.toggleEditMode('industry', true));
+		this.industryDisplay.addEventListener('click', () => this.toggleEditMode('industry', true));
 		companyInfoSection.appendChild(this.industryDisplay);
 
 		this.industryInput = document.createElement('input');
@@ -4569,6 +4585,7 @@ class CSOView extends ViewPane {
 		this.companyNameDisplay = document.createElement('h1');
 		this.companyNameDisplay.className = 'ceo-company-name-display';
 		this.companyNameDisplay.addEventListener('dblclick', () => this.toggleEditMode('name', true));
+		this.companyNameDisplay.addEventListener('click', () => this.toggleEditMode('name', true));
 		companyInfoSection.appendChild(this.companyNameDisplay);
 
 		this.companyNameInput = document.createElement('input');
@@ -4587,6 +4604,7 @@ class CSOView extends ViewPane {
 		this.industryDisplay = document.createElement('h2');
 		this.industryDisplay.className = 'ceo-industry-display';
 		this.industryDisplay.addEventListener('dblclick', () => this.toggleEditMode('industry', true));
+		this.industryDisplay.addEventListener('click', () => this.toggleEditMode('industry', true));
 		companyInfoSection.appendChild(this.industryDisplay);
 
 		this.industryInput = document.createElement('input');

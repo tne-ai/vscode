@@ -37,6 +37,32 @@
 	color: var(--vscode-foreground);
 	cursor: pointer;
 }
+/* Make empty headers clickable and show placeholders */
+.ceo-company-name-display,
+.ceo-industry-display {
+	min-height: 1.6em; /* ensure clickable area even when empty */
+	padding: 2px 0;
+	cursor: text;
+}
+
+/* Placeholder text when headers are empty */
+.ceo-company-name-display:empty::before {
+	content: "Click to enter company name";
+	color: var(--vscode-input-placeholderForeground);
+	opacity: 0.8;
+}
+
+.ceo-industry-display:empty::before {
+	content: "Click to enter industry";
+	color: var(--vscode-input-placeholderForeground);
+	opacity: 0.8;
+}
+
+/* Subtle affordance on hover */
+.ceo-company-name-display:hover,
+.ceo-industry-display:hover {
+	border-bottom: 1px dashed var(--vscode-editorGroup-border);
+}
 
 .ceo-info-label {
 	font-size: 0.9em;
