@@ -69,7 +69,16 @@ else {
 			reportIssueUrl: 'https://github.com/microsoft/vscode/issues/new',
 			licenseName: 'MIT',
 			licenseUrl: 'https://github.com/microsoft/vscode/blob/main/LICENSE.txt',
-			serverLicenseUrl: 'https://github.com/microsoft/vscode/blob/main/LICENSE.txt'
+			serverLicenseUrl: 'https://github.com/microsoft/vscode/blob/main/LICENSE.txt',
+			// Enable Microsoft VS Marketplace endpoints for out-of-sources/dev builds
+			extensionsGallery: {
+				serviceUrl: 'https://marketplace.visualstudio.com/_apis/public/gallery',
+				itemUrl: 'https://marketplace.visualstudio.com/items',
+				publisherUrl: 'https://marketplace.visualstudio.com/publishers',
+				resourceUrlTemplate: 'https://{publisher}.gallery.vsassets.io/_apis/public/gallery/publisher/{publisher}/extension/{name}/{version}/assetbyname/{type}',
+				controlUrl: 'https://az764295.vo.msecnd.net/extensions/marketplace.json',
+				nlsBaseUrl: 'https://www.vscode-unpkg.net'
+			}
 		});
 	}
 }

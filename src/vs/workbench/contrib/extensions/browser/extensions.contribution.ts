@@ -19,7 +19,7 @@ import { VIEWLET_ID, IExtensionsWorkbenchService, IExtensionsViewPaneContainer, 
 import { InstallSpecificVersionOfExtensionAction, ConfigureWorkspaceRecommendedExtensionsAction, ConfigureWorkspaceFolderRecommendedExtensionsAction, SetColorThemeAction, SetFileIconThemeAction, SetProductIconThemeAction, ClearLanguageAction, ToggleAutoUpdateForExtensionAction, ToggleAutoUpdatesForPublisherAction, TogglePreReleaseExtensionAction, InstallAnotherVersionAction, InstallAction } from './extensionsActions.js';
 import { ExtensionsInput } from '../common/extensionsInput.js';
 import { ExtensionEditor } from './extensionEditor.js';
-import { StatusUpdater, MaliciousExtensionChecker, ExtensionsViewletViewsContribution, BuiltInExtensionsContext, SearchMarketplaceExtensionsContext, RecommendedExtensionsContext, ExtensionsSortByContext, SearchHasTextContext, ExtensionsSearchValueContext, ExtensionMarketplaceStatusUpdater } from './extensionsViewlet.js';
+import { StatusUpdater, MaliciousExtensionChecker, ExtensionsViewletViewsContribution, BuiltInExtensionsContext, SearchMarketplaceExtensionsContext, RecommendedExtensionsContext, ExtensionsSortByContext, SearchHasTextContext, ExtensionsSearchValueContext, ExtensionMarketplaceStatusUpdater, ExtensionsViewPaneContainer } from './extensionsViewlet.js';
 import { IConfigurationRegistry, Extensions as ConfigurationExtensions, ConfigurationScope } from '../../../../platform/configuration/common/configurationRegistry.js';
 import * as jsonContributionRegistry from '../../../../platform/jsonschemas/common/jsonContributionRegistry.js';
 import { ExtensionsConfigurationSchema, ExtensionsConfigurationSchemaId } from '../common/extensionsFileTemplate.js';
@@ -125,9 +125,19 @@ Registry.as<IEditorPaneRegistry>(EditorExtensions.EditorPane).registerEditorPane
 		new SyncDescriptor(ExtensionsInput)
 	]);
 
-// Extensions view container removed from activity bar
-// Export a placeholder for MCP compatibility
-export const VIEW_CONTAINER = undefined;
+// Extensions view container registration (restored)
+// Register the Extensions container so the 'workbench.view.extensions' command exists
+export const VIEW_CONTAINER = Registry.as<IViewContainersRegistry>(ViewExtensions.ViewContainersRegistry).registerViewContainer(
+	{
+		id: VIEWLET_ID,
+		title: localize2('extensions', 'Extensions'),
+		ctorDescriptor: new SyncDescriptor(ExtensionsViewPaneContainer, [VIEWLET_ID, { mergeViewWithContainerWhenSingleView: true }]),
+		icon: Codicon.extensions,
+		storageId: VIEWLET_ID,
+		order: 999 // Set a high order to place it at the bottom of the activity bar
+	},
+	ViewContainerLocation.Sidebar
+);
 
 Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Configuration)
 	.registerConfiguration({

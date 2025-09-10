@@ -34,6 +34,14 @@
 	"nodejsRepository": "https://nodejs.org",
 	"urlProtocol": "code-oss",
 	"webviewContentExternalBaseUrlTemplate": "https://{{uuid}}.vscode-cdn.net/insider/ef65ac1ba57f57f2a3961bfe94aa20481caca4c6/out/vs/workbench/contrib/webview/browser/pre/",
+	"extensionsGallery": {
+		"serviceUrl": "https://marketplace.visualstudio.com/_apis/public/gallery",
+		"itemUrl": "https://marketplace.visualstudio.com/items",
+		"publisherUrl": "https://marketplace.visualstudio.com/publishers",
+		"resourceUrlTemplate": "https://{publisher}.gallery.vsassets.io/_apis/public/gallery/publisher/{publisher}/extension/{name}/{version}/assetbyname/{type}",
+		"controlUrl": "https://az764295.vo.msecnd.net/extensions/marketplace.json",
+		"nlsBaseUrl": "https://www.vscode-unpkg.net"
+	},
 	"builtInExtensions": [
 		{
 			"name": "ms-vscode.js-debug-companion",
@@ -82,6 +90,10 @@
 				},
 				"publisherDisplayName": "Microsoft"
 			}
+		},
+		{
+			"name": "patmood.rich-markdown-editor",
+			"version": "1.0.4"
 		}
 	],
 	"downloadUrl": "https://tne.ai/compass/download",
