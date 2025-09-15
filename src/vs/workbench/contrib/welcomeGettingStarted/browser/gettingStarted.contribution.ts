@@ -4,9 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { localize, localize2 } from '../../../../nls.js';
-import { GettingStartedInputSerializer, GettingStartedPage, inWelcomeContext } from './gettingStarted.js';
+import { GettingStartedPage, inWelcomeContext } from './gettingStarted.js';
 import { Registry } from '../../../../platform/registry/common/platform.js';
-import { EditorExtensions, IEditorFactoryRegistry } from '../../../common/editor.js';
+import { EditorExtensions } from '../../../common/editor.js';
 import { MenuId, registerAction2, Action2 } from '../../../../platform/actions/common/actions.js';
 import { ServicesAccessor } from '../../../../platform/instantiation/common/instantiation.js';
 import { ContextKeyExpr, IContextKeyService, RawContextKey } from '../../../../platform/contextkey/common/contextkey.js';
@@ -15,20 +15,16 @@ import { KeybindingWeight } from '../../../../platform/keybinding/common/keybind
 import { KeyCode } from '../../../../base/common/keyCodes.js';
 import { EditorPaneDescriptor, IEditorPaneRegistry } from '../../../browser/editor.js';
 import { SyncDescriptor } from '../../../../platform/instantiation/common/descriptors.js';
-import { IWalkthroughsService } from './gettingStartedService.js';
 import { GettingStartedEditorOptions, GettingStartedInput } from './gettingStartedInput.js';
 import { registerWorkbenchContribution2, WorkbenchPhase } from '../../../common/contributions.js';
 import { ConfigurationScope, Extensions as ConfigurationExtensions, IConfigurationRegistry } from '../../../../platform/configuration/common/configurationRegistry.js';
 import { workbenchConfigurationNodeBase } from '../../../common/configuration.js';
 import { CommandsRegistry, ICommandService } from '../../../../platform/commands/common/commands.js';
-import { IQuickInputService, IQuickPickItem } from '../../../../platform/quickinput/common/quickInput.js';
 import { IRemoteAgentService } from '../../../services/remote/common/remoteAgentService.js';
 import { isLinux, isMacintosh, isWindows, OperatingSystem as OS } from '../../../../base/common/platform.js';
 import { IExtensionManagementServerService } from '../../../services/extensionManagement/common/extensionManagement.js';
-import { IExtensionService } from '../../../services/extensions/common/extensions.js';
 import { StartupPageEditorResolverContribution, StartupPageRunnerContribution } from './startupPage.js';
 import { Categories } from '../../../../platform/action/common/actionCommonCategories.js';
-import { DisposableStore } from '../../../../base/common/lifecycle.js';
 import { AccessibleViewRegistry } from '../../../../platform/accessibility/browser/accessibleViewRegistry.js';
 import { GettingStartedAccessibleView } from './gettingStartedAccessibleView.js';
 
@@ -96,7 +92,6 @@ registerAction2(class extends Action2 {
 	}
 });
 
-Registry.as<IEditorFactoryRegistry>(EditorExtensions.EditorFactory).registerEditorSerializer(GettingStartedInput.ID, GettingStartedInputSerializer);
 Registry.as<IEditorPaneRegistry>(EditorExtensions.EditorPane).registerEditorPane(
 	EditorPaneDescriptor.create(
 		GettingStartedPage,
@@ -135,112 +130,6 @@ registerAction2(class extends Action2 {
 	}
 });
 
-CommandsRegistry.registerCommand({
-	id: 'walkthroughs.selectStep',
-	handler: (accessor, stepID: string) => {
-		const editorService = accessor.get(IEditorService);
-		const editorPane = editorService.activeEditorPane;
-		if (editorPane instanceof GettingStartedPage) {
-			editorPane.selectStepLoose(stepID);
-		} else {
-			console.error('Cannot run walkthroughs.selectStep outside of walkthrough context');
-		}
-	}
-});
-
-registerAction2(class extends Action2 {
-	constructor() {
-		super({
-			id: 'welcome.markStepComplete',
-			title: localize('welcome.markStepComplete', "Mark Step Complete"),
-			category,
-		});
-	}
-
-	run(accessor: ServicesAccessor, arg: string) {
-		if (!arg) { return; }
-		const gettingStartedService = accessor.get(IWalkthroughsService);
-		gettingStartedService.progressStep(arg);
-	}
-});
-
-registerAction2(class extends Action2 {
-	constructor() {
-		super({
-			id: 'welcome.markStepIncomplete',
-			title: localize('welcome.markStepInomplete', "Mark Step Incomplete"),
-			category,
-		});
-	}
-
-	run(accessor: ServicesAccessor, arg: string) {
-		if (!arg) { return; }
-		const gettingStartedService = accessor.get(IWalkthroughsService);
-		gettingStartedService.deprogressStep(arg);
-	}
-});
-
-registerAction2(class extends Action2 {
-	constructor() {
-		super({
-			id: 'welcome.showAllWalkthroughs',
-			title: localize2('welcome.showAllWalkthroughs', 'Open Walkthrough...'),
-			category,
-			f1: true,
-			menu: {
-				id: MenuId.MenubarHelpMenu,
-				group: '1_welcome',
-				order: 3,
-			},
-		});
-	}
-
-	private async getQuickPickItems(
-		contextService: IContextKeyService,
-		gettingStartedService: IWalkthroughsService
-	): Promise<IQuickPickItem[]> {
-		const categories = await gettingStartedService.getWalkthroughs();
-		return categories
-			.filter(c => contextService.contextMatchesRules(c.when))
-			.map(x => ({
-				id: x.id,
-				label: x.title,
-				detail: x.description,
-				description: x.source,
-			}));
-	}
-
-	async run(accessor: ServicesAccessor) {
-		const commandService = accessor.get(ICommandService);
-		const contextService = accessor.get(IContextKeyService);
-		const quickInputService = accessor.get(IQuickInputService);
-		const gettingStartedService = accessor.get(IWalkthroughsService);
-		const extensionService = accessor.get(IExtensionService);
-
-		const disposables = new DisposableStore();
-		const quickPick = disposables.add(quickInputService.createQuickPick());
-		quickPick.canSelectMany = false;
-		quickPick.matchOnDescription = true;
-		quickPick.matchOnDetail = true;
-		quickPick.placeholder = localize('pickWalkthroughs', 'Select a walkthrough to open');
-		quickPick.items = await this.getQuickPickItems(contextService, gettingStartedService);
-		quickPick.busy = true;
-		disposables.add(quickPick.onDidAccept(() => {
-			const selection = quickPick.selectedItems[0];
-			if (selection) {
-				commandService.executeCommand('workbench.action.openWalkthrough', selection.id);
-			}
-			quickPick.hide();
-		}));
-		disposables.add(quickPick.onDidHide(() => disposables.dispose()));
-		await extensionService.whenInstalledExtensionsRegistered();
-		disposables.add(gettingStartedService.onDidAddWalkthrough(async () => {
-			quickPick.items = await this.getQuickPickItems(contextService, gettingStartedService);
-		}));
-		quickPick.show();
-		quickPick.busy = false;
-	}
-});
 
 
 registerAction2(class extends Action2 {

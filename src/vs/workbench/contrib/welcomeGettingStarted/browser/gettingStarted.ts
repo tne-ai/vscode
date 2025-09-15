@@ -283,14 +283,15 @@ export class GettingStartedPage extends EditorPane {
 						badgeelement.parentElement?.setAttribute('aria-checked', 'true');
 						badgeelement.classList.remove(...ThemeIcon.asClassNameArray(gettingStartedUncheckedCodicon));
 						badgeelement.classList.add('complete', ...ThemeIcon.asClassNameArray(gettingStartedCheckedCodicon));
-						badgeelement.setAttribute('aria-label', localize('stepDone', "Checkbox for Step {0}: Completed", step.title));
+						badgeelement.setAttribute('aria-label', localize('stepDone', "Checkbox for Step {0}: Completed", ourStep.title));
 					}
 					else {
 						badgeelement.setAttribute('aria-checked', 'false');
 						badgeelement.parentElement?.setAttribute('aria-checked', 'false');
 						badgeelement.classList.remove('complete', ...ThemeIcon.asClassNameArray(gettingStartedCheckedCodicon));
 						badgeelement.classList.add(...ThemeIcon.asClassNameArray(gettingStartedUncheckedCodicon));
-						badgeelement.setAttribute('aria-label', localize('stepNotDone', "Checkbox for Step {0}: Not completed", step.title));
+						badgeelement.setAttribute('aria-label', localize('stepNotDone', "Checkbox for Step {0}: Not completed", ourStep.title));
+
 					}
 				});
 			}
@@ -1141,16 +1142,22 @@ export class GettingStartedPage extends EditorPane {
 		if (this.gettingStartedList) { this.gettingStartedList.dispose(); }
 
 		const rankWalkthrough = (e: IResolvedWalkthrough) => {
-			let rank: number | null = e.order;
+			// Exclude hidden entries entirely
+			if (this.getHiddenCategories().has(e.id)) {
+				return null;
+			}
+
+			// Base numeric rank (non-nullable for math)
+			let rank = (e.order ?? 0);
 
 			if (e.isFeatured) { rank += 7; }
 			if (e.newEntry) { rank += 3; }
 			if (e.newItems) { rank += 2; }
 			if (e.recencyBonus) { rank += 4 * e.recencyBonus; }
 
-			if (this.getHiddenCategories().has(e.id)) { rank = null; }
 			return rank;
 		};
+
 
 		const gettingStartedList = this.gettingStartedList = new GettingStartedIndexList(
 			{
@@ -1923,13 +1930,13 @@ export class GettingStartedPage extends EditorPane {
 
 		let renderedSteps: IResolvedWalkthroughStep[] | undefined = undefined;
 
-		const contextKeysToWatch = new Set(category.steps.flatMap(step => step.when.keys()));
+		const contextKeysToWatch = new Set(category.steps.flatMap(step => step.when?.keys() ?? []));
 
 		const buildStepList = () => {
 
-			category.steps.sort((a, b) => a.order - b.order);
+			category.steps.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 			const toRender = category.steps
-				.filter(step => this.contextService.contextMatchesRules(step.when));
+				.filter(step => this.contextService.contextMatchesRules(step.when ?? ContextKeyExpr.true()));
 
 			if (equals(renderedSteps, toRender, (a, b) => a.id === b.id)) {
 				return;

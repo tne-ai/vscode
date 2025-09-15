@@ -3,13 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { localize } from '../../../../nls.js';
-import { IWalkthrough } from '../../../../platform/extensions/common/extensions.js';
-import { ExtensionsRegistry } from '../../../services/extensions/common/extensionsRegistry.js';
 
-const titleTranslated = localize('title', "Title");
-
-export const walkthroughsExtensionPoint = ExtensionsRegistry.registerExtensionPoint<IWalkthrough[]>({
+// Walkthrough extension point disabled - no walkthrough functionality
+export const walkthroughsExtensionPoint = null; /* ExtensionsRegistry.registerExtensionPoint<IWalkthrough[]>({
 	extensionPoint: 'walkthroughs',
 	jsonSchema: {
 		description: localize('walkthroughs', "Contribute walkthroughs to help users getting started with your extension."),
@@ -226,3 +222,4 @@ export const walkthroughsExtensionPoint = ExtensionsRegistry.registerExtensionPo
 		}
 	}
 });
+*/
