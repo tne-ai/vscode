@@ -1,0 +1,26 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.view-header {
+	font-size: 2em; /* Large text */
+	font-weight: bold;
+	margin-bottom: 10px;
+	text-align: center;
+	padding: 10px 0;
+	border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.ceo-report-main-line {
+	font-size: 1.1em; /* Bigger font for the main task text */
+	display: flex;
+	align-items: center;
+}
+
+.ceo-report-description {
+	font-style: italic;
+	font-size: 0.9em; /* Smaller font for descriptions */
+	margin-top: 5px; /* Add some space below the main task */
+	margin-left: 20px; /* Indent the description */
+}
