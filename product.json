@@ -40,7 +40,7 @@
 		"publisherUrl": "https://marketplace.visualstudio.com/publishers",
 		"resourceUrlTemplate": "https://{publisher}.gallery.vsassets.io/_apis/public/gallery/publisher/{publisher}/extension/{name}/{version}/assetbyname/{type}",
 		"controlUrl": "https://az764295.vo.msecnd.net/extensions/marketplace.json",
-		"nlsBaseUrl": "https://www.compass-unpkg.net"
+		"nlsBaseUrl": "https://vscode.download.prss.microsoft.com/dbazure/"
 	},
 	"builtInExtensions": [
 		{
