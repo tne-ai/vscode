@@ -1,0 +1,189 @@
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.ai-summary-view-content {
+    display: flex;
+    flex-direction: column;
+    padding: 12px;
+    gap: 12px;
+    height: 100%;
+    box-sizing: border-box;
+    color: var(--vscode-foreground);
+}
+
+.ai-summary-section-title {
+    font-weight: 600;
+    font-size: 1.1em;
+    margin-bottom: 8px;
+    color: var(--vscode-editor-foreground);
+}
+
+.ai-summary-company-name-display {
+    font-size: 1.5em; /* H1 size */
+    margin: 0;
+    padding: 0;
+    color: var(--vscode-foreground);
+}
+
+.ai-summary-industry-display {
+    font-size: 1.2em; /* H2 size */
+    margin: 0;
+    padding: 0;
+    color: var(--vscode-foreground);
+}
+
+.ai-summary-info-label {
+    font-size: 0.9em;
+    font-weight: bold;
+    margin-top: 10px;
+    margin-bottom: 2px;
+    color: var(--vscode-editor-foreground);
+}
+
+.ai-summary-report-checklist {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-height: 50px;
+    border: 1px dashed var(--vscode-editorGroup-border);
+    padding: 8px;
+    border-radius: 3px;
+}
+
+.ai-summary-report-item {
+    display: flex;
+    align-items: center; /* Align items vertically in the middle */
+    /* Removed justify-content: space-between; to hard align left */
+    gap: 8px; /* Introduce a gap between elements */
+    font-size: 0.9em;
+    margin-bottom: 4px;
+}
+
+.ai-summary-report-item .status-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 8px;
+    margin-top: 7px;
+    flex-shrink: 0;
+}
+
+.ai-summary-report-item .status-indicator.checked {
+    background: var(--vscode-charts-green);
+}
+
+.ai-summary-report-item .status-indicator.unchecked {
+    border: 1px solid var(--vscode-descriptionForeground);
+    background: transparent;
+}
+
+.ai-summary-report-item label {
+    color: var(--vscode-foreground);
+    word-break: break-word;
+}
+
+.ai-summary-report-item label.checked {
+    color: var(--vscode-charts-green);
+    text-decoration: line-through;
+    opacity: 0.8;
+}
+
+.ai-summary-report-item label.unchecked {
+    color: var(--vscode-charts-green);
+    opacity: 0.9;
+}
+
+.ai-summary-separator {
+    border: none;
+    border-top: 1px solid var(--vscode-editorGroup-border);
+    margin: 15px 0;
+}
+
+.ai-summary-send-button {
+    background-color: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    border: none;
+    padding: 8px 15px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background-color 0.2s ease;
+}
+
+.ai-summary-send-button:hover:not(:disabled) {
+    background-color: var(--vscode-button-hoverBackground);
+}
+
+.ai-summary-send-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.ai-summary-section {
+    margin-bottom: 15px;
+}
+
+.ai-summary-label {
+    font-weight: bold;
+    margin-right: 5px;
+    color: var(--vscode-editor-foreground);
+}
+
+.ai-summary-company-name {
+    font-size: 1.8em;
+    margin-top: 5px;
+    margin-bottom: 10px;
+    color: var(--vscode-editor-foreground);
+}
+
+.ai-summary-industry {
+    font-size: 1.4em;
+    margin-top: 5px;
+    margin-bottom: 10px;
+    color: var(--vscode-editor-foreground);
+}
+
+.ai-summary-section-title {
+    font-size: 1.2em;
+    font-weight: bold;
+    margin-top: 15px;
+    margin-bottom: 5px;
+    border-bottom: 1px solid var(--vscode-editorGroup-border);
+    padding-bottom: 3px;
+    color: var(--vscode-editor-foreground);
+}
+
+.ai-summary-status {
+    margin-left: 10px;
+    color: var(--vscode-editor-foreground);
+}
+
+.ai-summary-generated-reports,
+.ai-summary-next-steps {
+    list-style-type: disc;
+    margin-left: 20px;
+    padding-left: 0;
+}
+
+.ai-summary-generated-reports li,
+.ai-summary-next-steps li {
+    margin-bottom: 5px;
+    color: var(--vscode-editor-foreground);
+}
+
+.ai-summary-mode-box {
+    background-color: var(--vscode-editorWidget-background);
+    color: var(--vscode-editorWidget-foreground);
+    border: 1px solid var(--vscode-editorWidget-border);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 10px; /* Smaller font */
+    font-style: italic; /* Italic text */
+    margin-right: 8px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    cursor: pointer; /* Indicate clickable */
+}

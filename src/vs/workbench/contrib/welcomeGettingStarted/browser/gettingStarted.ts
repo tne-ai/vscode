@@ -874,7 +874,24 @@ export class GettingStartedPage extends EditorPane {
 
 		const header = $('.header', {},
 			$('h1.product-name.caption', {}, this.productService.nameLong),
-			$('p.subtitle.description', {}, localize({ key: 'gettingStarted.editingEvolved', comment: ['Shown as subtitle on the Welcome page.'] }, "Editing evolved"))
+			$('p.subtitle.description', {}, localize({ key: 'gettingStarted.editingEvolved', comment: ['Shown as subtitle on the Welcome page.'] }, "Your AI Partner for Strategic Business Analysis and Consulting"))
+		);
+
+		const tutorialText = $('.tutorial-text', {},
+			$('p', {}, localize('welcomePage.tutorial1', "Welcome to Compass, your AI-powered assistant for strategic business analysis and consulting. Here's how to get started.")),
+			$('p', {},
+				localize('welcomePage.tutorial2_part1', "On the "),
+				$('span', { class: ThemeIcon.asCSSSelector(Codicon.comment) }),
+				localize('welcomePage.tutorial2_part2', " On the right panel of the screen, you'll interact with the Compass AI agent. To get started, simply input information about the company you're working with and the industry, and it will intelligently help you author comprehensive reports and analyses using its specialized modes may have. ")
+			),
+			$('p', {},
+				localize('welcomePage.tutorial3_part1', "On the left side of the screen, click on the"),
+				$('span', { class: ThemeIcon.asCSSSelector(Codicon.lightbulb) }),
+				localize('welcomePage.tutorial3_part2', " Lightbulb icon, and you'll find a dynamic summary of your current work and a clear list of your next steps. Click on any 'Next Step' to instantly trigger the AI to work on that specific task, guiding you through your project workflow seamlessly. You can also click the "),
+				$('span', { class: ThemeIcon.asCSSSelector(Codicon.files) }),
+				localize('welcomePage.tutorial3_part3', " File Icon to access the File Explorer.")
+			),
+			$('p', {}, localize('welcomePage.tutorial4', "Compass is designed for everyone, from seasoned professionals to those new to business analysis. Explore the modes, leverage AI insights, and streamline your strategic planning. Let's begin!"))
 		);
 
 		const leftColumn = $('.categories-column.categories-column-left', {},);
@@ -917,7 +934,8 @@ export class GettingStartedPage extends EditorPane {
 		gettingStartedList.onDidChange(layoutLists);
 		layoutLists();
 
-		reset(this.categoriesSlide, $('.gettingStartedCategoriesContainer', {}, header, leftColumn, rightColumn, footer,));
+		const columnsContainer = $('.columns-container', {}, leftColumn, rightColumn);
+		reset(this.categoriesSlide, $('.gettingStartedCategoriesContainer', {}, header, tutorialText, columnsContainer, footer,));
 		this.categoriesPageScrollbar?.scanDomNode();
 
 		this.updateCategoryProgress();

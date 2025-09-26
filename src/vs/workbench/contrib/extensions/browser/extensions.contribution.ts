@@ -85,8 +85,10 @@ import { SearchExtensionsTool, SearchExtensionsToolData } from '../common/search
 import { DEFAULT_ACCOUNT_SIGN_IN_COMMAND } from '../../../services/accounts/common/defaultAccount.js';
 import { IExtensionGalleryManifestService, IExtensionGalleryManifest, ExtensionGalleryManifestStatus, ExtensionGalleryResourceType, getExtensionGalleryManifestResourceUri, ExtensionGalleryServiceUrlConfigKey } from '../../../../platform/extensionManagement/common/extensionGalleryManifest.js';
 
-import { IViewContainersRegistry, Extensions as ViewExtensions, ViewContainerLocation } from '../../../common/views.js';
+import { IViewContainersRegistry, IViewsRegistry, Extensions as ViewExtensions, ViewContainerLocation } from '../../../common/views.js';
 import { Codicon } from '../../../../base/common/codicons.js';
+import { AiSummaryView, AI_SUMMARY_VIEW_ID } from '../../aiSummary/browser/aiSummaryView.js';
+import { ViewPaneContainer } from '../../../browser/parts/views/viewPaneContainer.js';
 // Singletons
 registerSingleton(IExtensionsWorkbenchService, ExtensionsWorkbenchService, InstantiationType.Eager /* Auto updates extensions */);
 registerSingleton(IExtensionRecommendationNotificationService, ExtensionRecommendationNotificationService, InstantiationType.Delayed);
@@ -124,6 +126,32 @@ export const VIEW_CONTAINER = Registry.as<IViewContainersRegistry>(ViewExtension
 	},
 	ViewContainerLocation.Sidebar
 );
+
+export const AI_SUMMARY_VIEW_CONTAINER_ID = 'compass.aiSummaryViewContainer';
+
+const aiSummaryViewContainer = Registry.as<IViewContainersRegistry>(ViewExtensions.ViewContainersRegistry).registerViewContainer(
+	   {
+	       id: AI_SUMMARY_VIEW_CONTAINER_ID,
+	       title: localize2('aiSummary.view.title', "AI Summary"),
+	       ctorDescriptor: new SyncDescriptor(ViewPaneContainer, [AI_SUMMARY_VIEW_CONTAINER_ID, { mergeViewWithContainerWhenSingleView: true }]),
+	       icon: Codicon.lightbulb,
+	       storageId: AI_SUMMARY_VIEW_CONTAINER_ID,
+	       order: 5 // Set a low order to place it high in the activity bar
+	   },
+	   ViewContainerLocation.Sidebar // Changed from Activitybar to Sidebar
+);
+console.log('aiSummaryViewContainer:', aiSummaryViewContainer);
+
+Registry.as<IViewsRegistry>(ViewExtensions.ViewsRegistry).registerViews([{
+	   id: AI_SUMMARY_VIEW_ID,
+	   name: localize2('aiSummary.view.title', "AI Summary"),
+	   containerIcon: Codicon.lightbulb,
+	   ctorDescriptor: new SyncDescriptor(AiSummaryView),
+	   canMoveView: true,
+	   canToggleVisibility: true,
+	   when: undefined,
+}], aiSummaryViewContainer);
+
 
 Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Configuration)
 	.registerConfiguration({

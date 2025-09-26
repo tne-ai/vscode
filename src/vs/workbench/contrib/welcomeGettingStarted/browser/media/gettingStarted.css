@@ -105,75 +105,44 @@
 }
 
 .monaco-workbench .part.editor > .content .gettingStartedContainer .gettingStartedSlideCategories > .gettingStartedCategoriesContainer {
-	display: grid;
+	display: flex;
+	flex-direction: column;
 	height: 100%;
 	max-width: 1200px;
 	margin: 0 auto;
-	grid-template-rows: 25% minmax(min-content, auto) min-content;
-	grid-template-columns: 1fr 6fr 1fr 6fr 1fr;
-	grid-template-areas:
-		".  header header header ."
-		". left-column . right-column ."
-		". footer footer footer .";
-}
-
-.monaco-workbench .part.editor > .content .gettingStartedContainer.width-constrained .gettingStartedSlideCategories > .gettingStartedCategoriesContainer {
-	grid-template-rows: auto min-content minmax(min-content, auto) min-content;
-	grid-template-columns: 1fr;
-	grid-template-areas: "header" "left-column" "right-column" "footer";
-}
-
-.monaco-workbench .part.editor > .content .gettingStartedContainer.height-constrained .gettingStartedSlideCategories > .gettingStartedCategoriesContainer {
-	grid-template-rows: auto minmax(min-content, auto) min-content;
-	grid-template-areas: "header" "left-column right-column" "footer footer";
-}
-
-.monaco-workbench .part.editor > .content .gettingStartedContainer.height-constrained.width-constrained .gettingStartedSlideCategories > .gettingStartedCategoriesContainer {
-	grid-template-rows: min-content minmax(min-content, auto) min-content;
-	grid-template-columns: 1fr;
-	grid-template-areas: "left-column" "right-column" "footer";
-}
-
-.monaco-workbench .part.editor > .content .gettingStartedContainer.width-constrained .gettingStartedSlideCategories > .gettingStartedCategoriesContainer > .header,
-.monaco-workbench .part.editor > .content .gettingStartedContainer.height-constrained .gettingStartedSlideCategories > .gettingStartedCategoriesContainer > .header {
-	display: none;
-}
-
-.monaco-workbench .part.editor > .content .gettingStartedContainer .gettingStartedSlideCategories li.showWalkthroughsEntry {
-	display: none;
-}
-
-.monaco-workbench .part.editor > .content .gettingStartedContainer.noWalkthroughs .gettingStartedSlideCategories li.showWalkthroughsEntry,
-.gettingStartedContainer.noExtensions {
-	display: unset;
-}
-
-.monaco-workbench .part.editor > .content .gettingStartedContainer .gettingStartedSlideCategories > .gettingStartedCategoriesContainer > * {
-	overflow: hidden;
-	text-overflow: ellipsis;
-}
-
-.monaco-workbench .part.editor > .content .gettingStartedContainer .gettingStartedSlideCategories > .gettingStartedCategoriesContainer > .categories-column > div {
-	margin-bottom: 32px;
-}
-
-.monaco-workbench .part.editor > .content .gettingStartedContainer .gettingStartedSlideCategories > .gettingStartedCategoriesContainer > .categories-column-left {
-	grid-area: left-column;
-}
-
-.monaco-workbench .part.editor > .content .gettingStartedContainer .gettingStartedSlideCategories > .gettingStartedCategoriesContainer > .categories-column-right {
-	grid-area: right-column;
+	padding: 24px;
 }
 
 .monaco-workbench .part.editor > .content .gettingStartedContainer .gettingStartedSlideCategories > .gettingStartedCategoriesContainer > .header {
-	grid-area: header;
-	align-self: end;
+	margin: 0 0 24px 0; /* Changed from auto to 0 for left alignment */
+	max-width: 800px;
+	text-align: left; /* Changed from center to left */
+}
+
+.monaco-workbench .part.editor > .content .gettingStartedContainer .gettingStartedSlideCategories > .gettingStartedCategoriesContainer > .tutorial-text {
+	margin: 0 0 32px 0; /* Changed from auto to 0 for left alignment */
+	max-width: 800px;
+}
+
+.monaco-workbench .part.editor > .content .gettingStartedContainer .gettingStartedSlideCategories > .gettingStartedCategoriesContainer > .columns-container {
+	display: flex;
+	flex-direction: row;
+	justify-content: flex-start; /* Changed from center to flex-start */
+	gap: 48px;
+	flex-wrap: wrap;
+	margin-bottom: 32px;
+}
+
+.monaco-workbench .part.editor > .content .gettingStartedContainer .gettingStartedSlideCategories > .gettingStartedCategoriesContainer > .columns-container > .categories-column {
+	flex: 1;
+	min-width: 300px;
+	max-width: 500px;
 }
 
 .monaco-workbench .part.editor > .content .gettingStartedContainer .gettingStartedSlideCategories > .gettingStartedCategoriesContainer > .footer {
-	grid-area: footer;
-	justify-self: center;
+	margin-top: auto;
 	text-align: center;
+	padding-top: 24px;
 }
 
 .monaco-workbench .part.editor > .content .gettingStartedContainer .gettingStartedSlideCategories .categories-slide-container {
@@ -1525,3 +1494,20 @@
 	left: 100%;
 	opacity: 0;
 }
+
+.tutorial-text {
+    margin: 20px 0;
+    max-width: 800px;
+    padding: 0 24px;
+    text-align: left !important; /* Ensure left alignment */
+    font-size: 1.1em;
+    line-height: 1.6;
+    color: var(--vscode-descriptionForeground);
+}
+
+.tutorial-text p {
+    margin-bottom: 1em;
+    text-align: left !important; /* Ensure left alignment for paragraphs */
+}
+
+/* Removed .tutorial-text .highlight as per user request */
