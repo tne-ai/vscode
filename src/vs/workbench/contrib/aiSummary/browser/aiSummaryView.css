@@ -36,7 +36,6 @@
 
 .ai-summary-info-label {
     font-size: 0.9em;
-    font-weight: bold;
     margin-top: 10px;
     margin-bottom: 2px;
     color: var(--vscode-editor-foreground);
@@ -87,7 +86,6 @@
 
 .ai-summary-report-item label.checked {
     color: var(--vscode-charts-green);
-    text-decoration: line-through;
     opacity: 0.8;
 }
 

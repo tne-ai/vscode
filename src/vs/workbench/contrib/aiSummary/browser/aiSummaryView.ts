@@ -18,11 +18,13 @@ import { ICommandService } from '../../../../platform/commands/common/commands.j
 import { INotificationService } from '../../../../platform/notification/common/notification.js';
 import { IFileService } from '../../../../platform/files/common/files.js';
 import { IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
-import { ViewPane } from '../../../browser/parts/views/viewPane.js';
-import { IViewPaneOptions } from '../../../browser/parts/views/viewPane.js';
+import { ViewPane, IViewPaneOptions } from '../../../browser/parts/views/viewPane.js';
 import { MenuId } from '../../../../platform/actions/common/actions.js';
 import { URI } from '../../../../base/common/uri.js';
 import { joinPath } from '../../../../base/common/resources.js';
+import { VSBuffer } from '../../../../base/common/buffer.js';
+
+import * as DOM from '../../../../base/browser/dom.js';
 
 interface AiSummaryInfo {
     companyName: string;
@@ -50,6 +52,7 @@ export class AiSummaryView extends ViewPane {
     private statusDisplay!: HTMLElement;
     private generatedReportsList!: HTMLElement;
     private nextStepsList!: HTMLElement;
+    private _refreshInterval: any;
 
     private aiSummaryInfo: AiSummaryInfo = {
         companyName: '',
@@ -98,9 +101,15 @@ export class AiSummaryView extends ViewPane {
     }
 
     private _onFilesChange(e: any, watchedFilePath: URI): void {
-        if (e.changes.some((change: any) => change.resource.toString() === watchedFilePath.toString())) {
-            console.log('summary.json changed, reloading AI Summary info.');
+        console.log('AI Summary: File change event detected.', e.changes);
+        if (e.changes.some((change: any) => {
+            console.log(`  Change resource: ${change.resource.toString()}, Watched path: ${watchedFilePath.toString()}`);
+            return change.resource.toString() === watchedFilePath.toString();
+        })) {
+            console.log('AI Summary: summary.json changed, reloading AI Summary info.');
             this.loadAiSummaryInfo();
+        } else {
+            console.log('AI Summary: Change event not for summary.json or path mismatch.');
         }
     }
 
@@ -120,11 +129,29 @@ export class AiSummaryView extends ViewPane {
         // Company Name
         this.companyNameDisplay = document.createElement('h1');
         this.companyNameDisplay.className = 'ai-summary-company-name-display';
+        this.companyNameDisplay.contentEditable = 'true';
+        this.companyNameDisplay.setAttribute('aria-label', localize('aiSummary.companyNameLabel', "Company Name"));
+        this.companyNameDisplay.onblur = (e) => this._onHeaderEdit(e, 'companyName');
+        this.companyNameDisplay.onkeydown = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.companyNameDisplay.blur();
+            }
+        };
         this.contentContainer.appendChild(this.companyNameDisplay);
 
         // Industry
         this.industryDisplay = document.createElement('h2');
         this.industryDisplay.className = 'ai-summary-industry-display';
+        this.industryDisplay.contentEditable = 'true';
+        this.industryDisplay.setAttribute('aria-label', localize('aiSummary.industryLabel', "Industry"));
+        this.industryDisplay.onblur = (e) => this._onHeaderEdit(e, 'industry');
+        this.industryDisplay.onkeydown = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                this.industryDisplay.blur();
+            }
+        };
         this.contentContainer.appendChild(this.industryDisplay);
 
         // Status
@@ -165,16 +192,35 @@ export class AiSummaryView extends ViewPane {
     private onBodyVisibilityChange(): void {
         if (this.isBodyVisible()) {
             this.loadAiSummaryInfo();
+            // Start timer-based refresh as a fallback
+            if (!this._refreshInterval) {
+                const targetWindow = DOM.getActiveWindow();
+                this._refreshInterval = targetWindow.setInterval(() => {
+                    console.log('Timer-based refresh: reloading AI Summary info.');
+                    this.loadAiSummaryInfo();
+                }, 10000); // 10 seconds
+            }
+        } else {
+            // Clear interval when view is not visible
+            if (this._refreshInterval) {
+                const targetWindow = DOM.getActiveWindow();
+                targetWindow.clearInterval(this._refreshInterval);
+                this._refreshInterval = undefined;
+            }
         }
     }
 
     private async getAiSummaryFilePath(): Promise<URI> {
         const workspaceFolders = this.workspaceContextService.getWorkspace().folders;
         if (workspaceFolders.length > 0) {
-            return joinPath(workspaceFolders[0].uri, 'TNE-CONTEXT', 'summary.json');
+            const path = joinPath(workspaceFolders[0].uri, 'TNE-CONTEXT', 'summary.json');
+            console.log('AI Summary: Watching file at:', path.toString());
+            return path;
         }
         // Fallback if no workspace is open, though in a real scenario, TNE-CONTEXT should be in a workspace.
-        return URI.file('/tmp/TNE-CONTEXT/summary.json');
+        const fallbackPath = URI.file('/tmp/TNE-CONTEXT/summary.json');
+        console.log('AI Summary: Watching fallback file at:', fallbackPath.toString());
+        return fallbackPath;
     }
 
     private async loadAiSummaryInfo(): Promise<void> {
@@ -182,17 +228,24 @@ export class AiSummaryView extends ViewPane {
         try {
             const content = await this.fileService.readFile(filePath);
             this.aiSummaryInfo = JSON.parse(content.value.toString());
+            // Ensure companyName and industry always have a value
+            if (!this.aiSummaryInfo.companyName) {
+                this.aiSummaryInfo.companyName = 'Company Name';
+            }
+            if (!this.aiSummaryInfo.industry) {
+                this.aiSummaryInfo.industry = 'Industry';
+            }
             console.log('AI Summary Info loaded:', this.aiSummaryInfo);
             this.updateViewContent();
         } catch (error) {
             if ((error as any).fileOperationResult === 1 /* FileOperationResult.FILE_NOT_FOUND */) {
                 this.notificationService.warn(localize('aiSummary.fileNotFound', "TNE-CONTEXT/summary.json not found. Displaying default content."));
                 this.aiSummaryInfo = {
-                    companyName: 'N/A',
-                    industry: 'N/A',
+                    companyName: 'Company Name',
+                    industry: 'Industry',
                     status: 'No summary data available.',
-                    generatedReports: ['No reports generated yet.'],
-                    nextSteps: ['Create a new report.']
+                    generatedReports: [],
+                    nextSteps: ['[CEO1. Existing Documents] Start Analysis']
                 };
                 this.updateViewContent();
             } else {
@@ -203,8 +256,8 @@ export class AiSummaryView extends ViewPane {
     }
 
     private updateViewContent(): void {
-        this.companyNameDisplay.textContent = this.aiSummaryInfo.companyName;
-        this.industryDisplay.textContent = this.aiSummaryInfo.industry;
+        this.companyNameDisplay.textContent = this.aiSummaryInfo.companyName || 'Company Name';
+        this.industryDisplay.textContent = this.aiSummaryInfo.industry || 'Industry';
         this.statusDisplay.textContent = this.aiSummaryInfo.status;
 
         // Clear existing lists
@@ -284,6 +337,28 @@ export class AiSummaryView extends ViewPane {
         );
         await this.commandService.executeCommand('compass.service.startTask', { message, newTask: true, mode: modeSlug });
         this.notificationService.info(localize('aiSummary.modeTaskSent', "Task sent: Switch to {0} mode and work on {1}.", modeName, todoDescription));
+    }
+
+    private async _onHeaderEdit(event: Event, field: 'companyName' | 'industry'): Promise<void> {
+        const target = event.target as HTMLElement;
+        const newValue = target.textContent?.trim() || '';
+
+        if (this.aiSummaryInfo[field] !== newValue) {
+            this.aiSummaryInfo[field] = newValue;
+            await this.saveAiSummaryInfo();
+        }
+    }
+
+    private async saveAiSummaryInfo(): Promise<void> {
+        const filePath = await this.getAiSummaryFilePath();
+        try {
+            const content = JSON.stringify(this.aiSummaryInfo, null, 4);
+            await this.fileService.writeFile(filePath, VSBuffer.fromString(content));
+            this.notificationService.info(localize('aiSummary.saveSuccess', "AI Summary data saved successfully."));
+        } catch (error) {
+            console.error('Error saving AI Summary data:', error);
+            this.notificationService.error(localize('aiSummary.saveError', "Failed to save AI Summary data: {0}", (error as Error).message));
+        }
     }
 
     override shouldShowWelcome(): boolean {

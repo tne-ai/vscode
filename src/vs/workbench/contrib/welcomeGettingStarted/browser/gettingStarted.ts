@@ -880,7 +880,6 @@ export class GettingStartedPage extends EditorPane {
 		const tutorialText = $('.tutorial-text', {},
 			$('p', {}, localize('welcomePage.tutorial1', "Welcome to Compass, your AI-powered assistant for strategic business analysis and consulting. Here's how to get started.")),
 			$('p', {},
-				localize('welcomePage.tutorial2_part1', "On the "),
 				$('span', { class: ThemeIcon.asCSSSelector(Codicon.comment) }),
 				localize('welcomePage.tutorial2_part2', " On the right panel of the screen, you'll interact with the Compass AI agent. To get started, simply input information about the company you're working with and the industry, and it will intelligently help you author comprehensive reports and analyses using its specialized modes may have. ")
 			),
