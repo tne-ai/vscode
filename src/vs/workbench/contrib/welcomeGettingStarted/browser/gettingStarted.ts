@@ -9,7 +9,6 @@ import { StandardKeyboardEvent } from '../../../../base/browser/keyboardEvent.js
 import { Button } from '../../../../base/browser/ui/button/button.js';
 import { renderLabelWithIcons } from '../../../../base/browser/ui/iconLabel/iconLabels.js';
 import { DomScrollableElement } from '../../../../base/browser/ui/scrollbar/scrollableElement.js';
-import { Toggle } from '../../../../base/browser/ui/toggle/toggle.js';
 import { coalesce, equals } from '../../../../base/common/arrays.js';
 import { Delayer, Throttler } from '../../../../base/common/async.js';
 import { CancellationToken } from '../../../../base/common/cancellation.js';
@@ -47,7 +46,7 @@ import { IQuickInputService } from '../../../../platform/quickinput/common/quick
 import { IStorageService, StorageScope, StorageTarget, WillSaveStateReason } from '../../../../platform/storage/common/storage.js';
 import { ITelemetryService, TelemetryLevel, firstSessionDateStorageKey } from '../../../../platform/telemetry/common/telemetry.js';
 import { getTelemetryLevel } from '../../../../platform/telemetry/common/telemetryUtils.js';
-import { defaultButtonStyles, defaultKeybindingLabelStyles, defaultToggleStyles } from '../../../../platform/theme/browser/defaultStyles.js';
+import { defaultButtonStyles, defaultKeybindingLabelStyles } from '../../../../platform/theme/browser/defaultStyles.js';
 import { IWindowOpenable } from '../../../../platform/window/common/window.js';
 import { IWorkspaceContextService, UNKNOWN_EMPTY_WINDOW_WORKSPACE } from '../../../../platform/workspace/common/workspace.js';
 import { IRecentFolder, IRecentWorkspace, IRecentlyOpened, IWorkspacesService, isRecentFolder, isRecentWorkspace } from '../../../../platform/workspaces/common/workspaces.js';
@@ -196,6 +195,7 @@ export class GettingStartedPage extends EditorPane {
 	) {
 
 		super(GettingStartedPage.ID, group, telemetryService, themeService, storageService);
+		this.configurationService.updateValue(configurationKey, 'welcomePage', ConfigurationTarget.USER);
 
 		this.container = $('.gettingStartedContainer',
 			{
@@ -845,32 +845,6 @@ export class GettingStartedPage extends EditorPane {
 	private async buildCategoriesSlide() {
 
 		this.categoriesSlideDisposables.clear();
-		const showOnStartupCheckbox = new Toggle({
-			icon: Codicon.check,
-			actionClassName: 'getting-started-checkbox',
-			isChecked: this.configurationService.getValue(configurationKey) === 'welcomePage',
-			title: localize('checkboxTitle', "When checked, this page will be shown on startup."),
-			...defaultToggleStyles
-		});
-		showOnStartupCheckbox.domNode.id = 'showOnStartup';
-		const showOnStartupLabel = $('label.caption', { for: 'showOnStartup' }, localize('welcomePage.showOnStartup', "Show welcome page on startup"));
-		const onShowOnStartupChanged = () => {
-			if (showOnStartupCheckbox.checked) {
-				this.telemetryService.publicLog2<GettingStartedActionEvent, GettingStartedActionClassification>('gettingStarted.ActionExecuted', { command: 'showOnStartupChecked', argument: undefined, walkthroughId: this.currentWalkthrough?.id });
-				this.configurationService.updateValue(configurationKey, 'welcomePage');
-			} else {
-				this.telemetryService.publicLog2<GettingStartedActionEvent, GettingStartedActionClassification>('gettingStarted.ActionExecuted', { command: 'showOnStartupUnchecked', argument: undefined, walkthroughId: this.currentWalkthrough?.id });
-				this.configurationService.updateValue(configurationKey, 'none');
-			}
-		};
-		this.categoriesSlideDisposables.add(showOnStartupCheckbox);
-		this.categoriesSlideDisposables.add(showOnStartupCheckbox.onChange(() => {
-			onShowOnStartupChanged();
-		}));
-		this.categoriesSlideDisposables.add(addDisposableListener(showOnStartupLabel, 'click', () => {
-			showOnStartupCheckbox.checked = !showOnStartupCheckbox.checked;
-			onShowOnStartupChanged();
-		}));
 
 		const header = $('.header', {},
 			$('h1.product-name.caption', {}, this.productService.nameLong),
@@ -900,11 +874,7 @@ export class GettingStartedPage extends EditorPane {
 		const recentList = this.buildRecentlyOpenedList();
 		const gettingStartedList = this.buildGettingStartedWalkthroughsList();
 
-		const footer = $('.footer', {},
-			$('p.showOnStartup', {},
-				showOnStartupCheckbox.domNode,
-				showOnStartupLabel,
-			));
+		const footer = $('.footer', {});
 
 		const layoutLists = () => {
 			if (gettingStartedList.itemCount) {
