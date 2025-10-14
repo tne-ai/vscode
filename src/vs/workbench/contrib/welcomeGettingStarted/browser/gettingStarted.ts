@@ -867,6 +867,11 @@ export class GettingStartedPage extends EditorPane {
 			$('p', {}, localize('welcomePage.tutorial4', "Compass is designed for everyone, from seasoned professionals to those new to business analysis. Explore the modes, leverage AI insights, and streamline your strategic planning. Let's begin!"))
 		);
 
+		const tutorialVideoLinkText = parseLinkedText(`[${localize('tutorialVideoLink', "Tutorial Video")}](${'https://youtu.be/IxZuI6qOvuM'})`);
+		const tutorialVideoLinkParagraph = $('p', {});
+		this.buildMarkdownDescription(tutorialVideoLinkParagraph, [tutorialVideoLinkText]);
+		tutorialText.appendChild(tutorialVideoLinkParagraph);
+
 		const leftColumn = $('.categories-column.categories-column-left', {},);
 		const rightColumn = $('.categories-column.categories-column-right', {},);
 
