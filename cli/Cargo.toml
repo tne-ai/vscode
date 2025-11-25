@@ -77,3 +77,4 @@ lto = true
 default = []
 vsda = []
 vscode-encrypt = []
+

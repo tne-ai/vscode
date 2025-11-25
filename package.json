@@ -226,15 +226,15 @@
     "kerberos@2.1.1": {
       "node-addon-api": "7.1.0"
     },
-    "form-data": "^4.0.4",
+    "form-data": "^4.0.5",
     "tar": "^6.2.1",
     "braces": "^3.0.3",
-    "tar-fs": "^3.1.1",
+    "tar-fs": "^3.0.8",
     "postcss": "^8.4.31",
     "js-yaml": "^4.1.1",
     "brace-expansion": "^2.0.1",
     "koa": "^2.16.2",
-    "tmp": "^0.2.4"
+    "tmp": "^0.2.5"
   },
   "repository": {
     "type": "git",
