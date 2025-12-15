@@ -150,7 +150,8 @@
     "vscode-tas-client": "^0.1.84"
   },
   "overrides": {
-    "@azure/msal-node-runtime": "^0.18.2"
+    "@azure/msal-node-runtime": "^0.18.2",
+    "jws": "^3.2.3"
   },
   "repository": {
     "type": "git",

@@ -78,4 +78,10 @@ default = []
 vsda = []
 vscode-encrypt = []
 
+# Security note: The dev-tunnels crate currently uses vulnerable versions of:
+# - russh 0.37.1 (CVE-2024-43410, CVE-2025-54804, CVE-2023-48795 - needs >= 0.54.1)
+# - ed25519-dalek 1.0.1 (CVE-2022-50237 - needs >= 2.0.0)
+# - curve25519-dalek 3.2.1 (CVE-2024-58262 - needs >= 4.1.3)
+# These are pinned by the upstream dev-tunnels crate and require upstream updates.
+# Track: https://github.com/microsoft/dev-tunnels
 

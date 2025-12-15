@@ -52,6 +52,9 @@
 		"@types/vscode-notebook-renderer": "^1.60.0",
 		"jsdom": "^21.1.1"
 	},
+	"overrides": {
+		"form-data": "^4.0.4"
+	},
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/microsoft/vscode.git"
